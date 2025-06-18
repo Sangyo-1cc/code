@@ -125,8 +125,6 @@ function analyzeSquat(landmarks) {
 
     for (let i = 0; i < requiredLandmarks.length; i++) {
         // 필수 랜드마크가 없거나 가시성이 낮을 경우 경고 출력 및 분석 건너뛰기
-        // 가시성 임계값 0.6 -> 0.3으로 대폭 완화
-        // requiredLandlands -> requiredLandmarks 오타 수정
         if (!pose[requiredLandmarks[i]] || pose[requiredLandmarks[i]].visibility < 0.3) { 
             console.warn(`LANDMARK_STATUS: 필수 랜드마크 ${requiredLandmarks[i]}번이 감지되지 않거나 가시성(${pose[requiredLandmarks[i]]?.visibility.toFixed(2)})이 낮음. 스쿼트 분석 건너뛰기`);
             return;
@@ -157,10 +155,16 @@ function analyzeSquat(landmarks) {
         bestMomentTime = video.currentTime;
     }
 
+    // --- 점수 계산 로직 개선: 얕은 스쿼트도 점수 부여 ---
     let depthScore = 0;
-    if (kneeAngle <= 90) depthScore = 100;
-    else if (kneeAngle <= 110) depthScore = Math.max(0, 100 - (kneeAngle - 90) * 2.5);
-    else depthScore = Math.max(0, 50 - (kneeAngle - 110) * 1.5);
+    // 무릎 각도 180도(완전히 폄) ~ 0도(완전히 굽힘)
+    // 160도부터 0도까지를 100점 기준으로 선형적으로 점수 부여
+    if (kneeAngle >= 160) depthScore = 0; // 너무 펴진 상태
+    else if (kneeAngle <= 60) depthScore = 100; // 60도 이하: 만점
+    else { // 60도 ~ 160도 사이
+        depthScore = Math.max(0, 100 - (kneeAngle - 60) * (100 / (160 - 60))); // 선형 점수 감소
+    }
+    depthScore = Math.round(depthScore); // 정수로 반올림
     
     let backScore = 0;
     const idealTorsoMin = 10;
@@ -173,6 +177,8 @@ function analyzeSquat(landmarks) {
     } else {
         backScore = Math.max(0, 100 - (torsoAngle - idealTorsoMax) * 3);
     }
+    backScore = Math.round(backScore); // 정수로 반올림
+    // --- 점수 계산 로직 개선 끝 ---
 
     // 스쿼트 상태 머신 임계값
     const STANDING_KNEE_THRESHOLD = 155; 
@@ -180,13 +186,14 @@ function analyzeSquat(landmarks) {
     const BOTTOM_KNEE_THRESHOLD = 140;     
     const ASCENDING_KNEE_THRESHOLD = 135; 
 
-    const MIN_SQUAT_DURATION_FRAMES = 1; 
+    const MIN_SQUAT_DURATION_FRAMES = 4; // 이전 1 -> 4로 다시 조정 (너무 짧은 인식 방지)
     const MIN_BOTTOM_HOLD_FRAMES = 1;    
     
     // 상태 머신 로직
     switch (squatPhase) {
         case 'standing':
             // 무릎 각도 조건만으로 하강 진입 시도 
+            // 현재 무릎 각도 153.98 (<= 160) -> 진입 예상
             if (kneeAngle <= DESCENDING_KNEE_THRESHOLD) { 
                 squatPhase = 'descending';
                 frameCount = 0;
@@ -358,6 +365,7 @@ async function endAnalysis() {
 
     if (squatCount > 0) { 
         showRegularResults();
+        // 점수 계산은 마지막 스쿼트 사이클의 평균 점수를 사용 (아직 여러 횟수 평균은 아님)
         const finalScores = {
             depth: Math.round(totalScores.depth / frameCount),
             backPosture: Math.round(totalScores.backPosture / frameCount)

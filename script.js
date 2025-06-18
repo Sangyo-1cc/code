@@ -3,7 +3,7 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypa
 const videoUpload = document.getElementById("videoUpload"), video = document.getElementById("analysisVideo"), canvasElement = document.getElementById("output_canvas"), canvasCtx = canvasElement.getContext("2d"), videoContainer = document.getElementById("videoContainer"), statusElement = document.getElementById("status"), feedbackList = document.getElementById("feedbackList"), shareStoryBtn = document.getElementById("shareStoryBtn"), uploadSection = document.getElementById('upload-section'), analysisSection = document.getElementById('analysis-section'), resultSection = document.getElementById('result-section'), storyCanvas = document.getElementById('story-canvas'), storyCtx = storyCanvas.getContext('2d'), coachFeedbackArea = document.getElementById('coach-feedback-area'), storyCanvasContainer = document.getElementById('story-canvas-container'), startAnalysisBtn = document.getElementById('startAnalysisBtn'), resetBtn = document.getElementById('resetBtn'), noSquatResultArea = document.getElementById('no-squat-result-area'), initialStatus = document.getElementById('initial-status');
 
 // 스쿼트 분석 관련 변수
-let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = { depth: 0, backPosture: 0 }, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false, bottomHoldFrames = 0; // animationFrameId로 통일
+let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = { depth: 0, backPosture: 0 }, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false, bottomHoldFrames = 0; // totalScores 초기값 설정
 
 function showRegularResults() {
     if(storyCanvasContainer) storyCanvasContainer.style.display = 'block';
@@ -175,7 +175,7 @@ function analyzeSquat(landmarks) {
 
     // 스쿼트 상태 머신 임계값
     const STANDING_KNEE_THRESHOLD = 155; 
-    const DESCENDING_KNEE_THRESHOLD = 150; 
+    const DESCENDING_KNEE_THRESHOLD = 160; // 이전 150 -> 160 (하강 시작 각도 더 완화)
     const BOTTOM_KNEE_THRESHOLD = 140;     
     const ASCENDING_KNEE_THRESHOLD = 135; 
 
@@ -327,7 +327,7 @@ function setupVideoDisplay() {
 }
 
 function previewLoop() {
-    if (animationFrameId) cancelAnimationFrame(animationFrameId); // 이곳을 animationFrameId로 수정
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
     if (video.paused || video.ended) return;
 
     canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);

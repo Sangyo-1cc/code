@@ -124,7 +124,6 @@ function analyzeSquat(landmarks) {
     const pose = landmarks[0];
 
     for (let i = 0; i < requiredLandmarks.length; i++) {
-        // 필수 랜드마크가 없거나 가시성이 낮을 경우 경고 출력 및 분석 건너뛰기
         if (!pose[requiredLandmarks[i]] || pose[requiredLandmarks[i]].visibility < 0.6) {
             console.warn(`LANDMARK_STATUS: 필수 랜드마크 ${requiredLandmarks[i]}번이 감지되지 않거나 가시성(${pose[requiredLandmarks[i]]?.visibility})이 낮음. 스쿼트 분석 건너뜀.`);
             return;
@@ -185,21 +184,22 @@ function analyzeSquat(landmarks) {
     switch (squatPhase) {
         case 'standing':
             // 서있는 상태에서 무릎이 충분히 구부러지고 엉덩이가 무릎보다 아래로 내려가면 하강 시작
-            // 중요한 디버깅: '&& hip.y > knee.y' 조건이 문제인지 확인
-            // 현재 로그 HipY: 0.80, KneeY: 0.73 -> hip.y > knee.y는 참임.
-            // 따라서 문제는 'kneeAngle <= DESCENDING_KNEE_THRESHOLD' (109.22 <= 150) 임에도 불구하고
-            // 다른 문제로 상태 전환이 안 되는 것.
-
-            // 임시로 hip.y > knee.y 조건을 제거하여 무릎 각도만으로 하강 진입 시도
-            if (kneeAngle <= DESCENDING_KNEE_THRESHOLD) { // hip.y > knee.y 조건 일시 제거
+            // HipY: 0.80, KneeY: 0.73 인 경우, hip.y > knee.y 가 True -> 엉덩이가 무릎보다 아래에 있음 (정상 스쿼트)
+            // 현재 무릎 각도 149.30 (<= DESCENDING_KNEE_THRESHOLD 150) -> 이 조건도 만족
+            // 이전 시도에서 이 두 조건이 참이었는데도 standing에 머물렀으므로
+            // 문제의 원인일 수 있는 'else' 절의 DEBUG_STANDING 로깅을 제거하고,
+            // 더 강력하게 이 상태 전환을 시도합니다.
+            // 또한, HipY와 KneeY의 절대적인 값보다는 '상대적인 변화'나 '시작 자세'의 안정성을 고려해야 할 수도 있습니다.
+            // 일단 HipY > KneeY 조건을 다시 포함하여 춤과의 구분을 시도
+            if (kneeAngle <= DESCENDING_KNEE_THRESHOLD && hip.y > knee.y) { 
                 squatPhase = 'descending';
                 frameCount = 0;
                 bottomHoldFrames = 0;
                 repReachedMinDepth = false; 
                 totalScores = { depth: 0, backPosture: 0 }; 
-                console.log(`SQUAT_PHASE: **DESCENDING** (무릎 각도: ${kneeAngle.toFixed(2)})`);
+                console.log(`SQUAT_PHASE: **DESCENDING** (무릎 각도: ${kneeAngle.toFixed(2)}, 엉덩이-무릎 위치: ${hip.y.toFixed(2)} > ${knee.y.toFixed(2)})`);
             } else {
-                console.log(`DEBUG_STANDING: Standing. Knee: ${kneeAngle.toFixed(2)}, HipY: ${hip.y.toFixed(2)}, KneeY: ${knee.y.toFixed(2)}, DescendingThresh: ${DESCENDING_KNEE_THRESHOLD}`);
+                 console.log(`DEBUG_STANDING: Standing. Knee: ${kneeAngle.toFixed(2)}, HipY: ${hip.y.toFixed(2)}, KneeY: ${knee.y.toFixed(2)}, DescendingThresh: ${DESCENDING_KNEE_THRESHOLD}, hip.y > knee.y: ${hip.y > knee.y}`);
             }
             break;
 
@@ -211,12 +211,12 @@ function analyzeSquat(landmarks) {
                     repReachedMinDepth = true; 
                     console.log(`SQUAT_PHASE: **BOTTOM** (무릎 각도: ${kneeAngle.toFixed(2)}, 유지 프레임: ${bottomHoldFrames})`);
                 }
-            } else if (kneeAngle > STANDING_KNEE_THRESHOLD) {
+            } else if (kneeAngle > STANDING_KNEE_THRESHOLD) { // 하강 중 다시 너무 펴지면 스쿼트 취소 (standing으로 돌아감)
                 squatPhase = 'standing';
                 console.log(`SQUAT_PHASE: standing (하강 취소, 무릎 각도: ${kneeAngle.toFixed(2)})`);
             }
-            // 'descending' 상태일 때 점수 누적 (bottom이 아니면)
-            if (squatPhase === 'descending') { 
+            
+            if (squatPhase === 'descending') { // 'descending' 상태일 때 점수 누적
                 frameCount++;
                 totalScores.depth += depthScore;
                 totalScores.backPosture += backScore;
@@ -229,7 +229,8 @@ function analyzeSquat(landmarks) {
                 bottomHoldFrames = 0; 
                 console.log(`SQUAT_PHASE: **ASCENDING** (무릎 각도: ${kneeAngle.toFixed(2)})`);
             }
-            frameCount++; 
+            
+            frameCount++; // 최하점 상태에서도 프레임 및 점수 누적
             totalScores.depth += depthScore;
             totalScores.backPosture += backScore;
             break;
@@ -249,7 +250,8 @@ function analyzeSquat(landmarks) {
                 bottomHoldFrames = 0;
                 console.log(`SQUAT_PHASE: standing (스쿼트 완료)`);
             }
-            frameCount++;
+            
+            frameCount++; // 상승 상태에서도 프레임 및 점수 누적
             totalScores.depth += depthScore;
             totalScores.backPosture += backScore;
             break;

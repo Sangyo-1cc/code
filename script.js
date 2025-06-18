@@ -124,6 +124,7 @@ function analyzeSquat(landmarks) {
     const pose = landmarks[0];
 
     for (let i = 0; i < requiredLandmarks.length; i++) {
+        // 필수 랜드마크가 없거나 가시성이 낮을 경우 경고 출력 및 분석 건너뛰기
         if (!pose[requiredLandmarks[i]] || pose[requiredLandmarks[i]].visibility < 0.6) {
             console.warn(`LANDMARK_STATUS: 필수 랜드마크 ${requiredLandmarks[i]}번이 감지되지 않거나 가시성(${pose[requiredLandmarks[i]]?.visibility})이 낮음. 스쿼트 분석 건너뜀.`);
             return;
@@ -172,45 +173,48 @@ function analyzeSquat(landmarks) {
     }
 
     // 스쿼트 상태 머신 임계값
-    const STANDING_KNEE_THRESHOLD = 155; // 무릎이 거의 펴진 상태 (이전 160 -> 155)
-    const DESCENDING_KNEE_THRESHOLD = 150; // 하강 시작으로 간주하는 각도
-    const BOTTOM_KNEE_THRESHOLD = 140;     // 스쿼트 최하점 각도 (이하로 내려가야 함) (이전 120 -> 140 대폭 완화)
-    const ASCENDING_KNEE_THRESHOLD = 135; // 상승 시작으로 간주하는 각도 (이전 140 -> 135)
+    const STANDING_KNEE_THRESHOLD = 155; 
+    const DESCENDING_KNEE_THRESHOLD = 150; 
+    const BOTTOM_KNEE_THRESHOLD = 140;     
+    const ASCENDING_KNEE_THRESHOLD = 135; 
 
-    const MIN_SQUAT_DURATION_FRAMES = 5; // 유효한 스쿼트 동작의 최소 프레임 수
-    const MIN_BOTTOM_HOLD_FRAMES = 1;    // 최하점 상태를 유지해야 하는 최소 프레임 수 (이전 1 -> 1)
+    const MIN_SQUAT_DURATION_FRAMES = 5; 
+    const MIN_BOTTOM_HOLD_FRAMES = 1;    
     
     // 상태 머신 로직
     switch (squatPhase) {
         case 'standing':
             // 서있는 상태에서 무릎이 충분히 구부러지고 엉덩이가 무릎보다 아래로 내려가면 하강 시작
-            // hip.y > knee.y 는 엉덩이 y좌표가 무릎 y좌표보다 커야 함 (y축은 아래로 갈수록 커짐)
-            if (kneeAngle <= DESCENDING_KNEE_THRESHOLD && hip.y > knee.y) { 
+            // 중요한 디버깅: '&& hip.y > knee.y' 조건이 문제인지 확인
+            // 현재 로그 HipY: 0.80, KneeY: 0.73 -> hip.y > knee.y는 참임.
+            // 따라서 문제는 'kneeAngle <= DESCENDING_KNEE_THRESHOLD' (109.22 <= 150) 임에도 불구하고
+            // 다른 문제로 상태 전환이 안 되는 것.
+
+            // 임시로 hip.y > knee.y 조건을 제거하여 무릎 각도만으로 하강 진입 시도
+            if (kneeAngle <= DESCENDING_KNEE_THRESHOLD) { // hip.y > knee.y 조건 일시 제거
                 squatPhase = 'descending';
                 frameCount = 0;
                 bottomHoldFrames = 0;
-                repReachedMinDepth = false; // 새로운 스쿼트 시작
-                totalScores = { depth: 0, backPosture: 0 }; // 새로운 스쿼트 점수 초기화
-                console.log(`SQUAT_PHASE: descending (무릎 각도: ${kneeAngle.toFixed(2)}, 엉덩이-무릎 위치: ${hip.y > knee.y})`);
+                repReachedMinDepth = false; 
+                totalScores = { depth: 0, backPosture: 0 }; 
+                console.log(`SQUAT_PHASE: **DESCENDING** (무릎 각도: ${kneeAngle.toFixed(2)})`);
+            } else {
+                console.log(`DEBUG_STANDING: Standing. Knee: ${kneeAngle.toFixed(2)}, HipY: ${hip.y.toFixed(2)}, KneeY: ${knee.y.toFixed(2)}, DescendingThresh: ${DESCENDING_KNEE_THRESHOLD}`);
             }
             break;
 
         case 'descending':
-            // 하강 중 무릎 각도가 최하점 임계값 이하로 내려가면 bottomHoldFrames 증가
             if (kneeAngle <= BOTTOM_KNEE_THRESHOLD) {
                 bottomHoldFrames++;
-                if (bottomHoldFrames >= MIN_BOTTOM_HOLD_FRAMES) { // 충분히 유지되면 최하점 상태로 진입
+                if (bottomHoldFrames >= MIN_BOTTOM_HOLD_FRAMES) { 
                     squatPhase = 'bottom';
-                    repReachedMinDepth = true; // 최소 깊이 도달
-                    console.log(`SQUAT_PHASE: bottom (무릎 각도: ${kneeAngle.toFixed(2)}, 유지 프레임: ${bottomHoldFrames})`);
+                    repReachedMinDepth = true; 
+                    console.log(`SQUAT_PHASE: **BOTTOM** (무릎 각도: ${kneeAngle.toFixed(2)}, 유지 프레임: ${bottomHoldFrames})`);
                 }
             } else if (kneeAngle > STANDING_KNEE_THRESHOLD) {
-                // 하강 중 다시 너무 펴지면 스쿼트 취소 (standing으로 돌아감)
                 squatPhase = 'standing';
                 console.log(`SQUAT_PHASE: standing (하강 취소, 무릎 각도: ${kneeAngle.toFixed(2)})`);
             }
-            // else: 여전히 하강 중이거나, 최하점 근처지만 아직 bottom 확정은 아님
-
             // 'descending' 상태일 때 점수 누적 (bottom이 아니면)
             if (squatPhase === 'descending') { 
                 frameCount++;
@@ -220,40 +224,32 @@ function analyzeSquat(landmarks) {
             break;
 
         case 'bottom':
-            // 최하점에서 무릎 각도가 상승 임계값 이상으로 올라오면 상승 시작
             if (kneeAngle > ASCENDING_KNEE_THRESHOLD) {
                 squatPhase = 'ascending';
-                bottomHoldFrames = 0; // 초기화
-                console.log(`SQUAT_PHASE: ascending (무릎 각도: ${kneeAngle.toFixed(2)})`);
+                bottomHoldFrames = 0; 
+                console.log(`SQUAT_PHASE: **ASCENDING** (무릎 각도: ${kneeAngle.toFixed(2)})`);
             }
-            // else: 여전히 최하점에 머무는 중
-            
-            frameCount++; // 최하점 상태에서도 프레임 및 점수 누적
+            frameCount++; 
             totalScores.depth += depthScore;
             totalScores.backPosture += backScore;
             break;
 
         case 'ascending':
-            // 상승 중 무릎이 거의 다 펴지면 스쿼트 완료
             if (kneeAngle > STANDING_KNEE_THRESHOLD) {
                 squatPhase = 'standing';
-                // 스쿼트 완료 조건: 최소 깊이 도달 및 최소 동작 프레임 충족
                 if (repReachedMinDepth && frameCount >= MIN_SQUAT_DURATION_FRAMES) {
                     squatCount++;
                     console.log(`SQUAT_COUNT: 스쿼트 횟수 증가! 현재 횟수: ${squatCount}, 총 프레임: ${frameCount}`);
                 } else {
                     console.log(`SQUAT_COUNT: 스쿼트 횟수 증가 실패. repReachedMinDepth: ${repReachedMinDepth}, frameCount: ${frameCount}`);
                 }
-                // 다음 스쿼트를 위한 모든 상태 초기화
                 repReachedMinDepth = false;
                 frameCount = 0;
                 totalScores = { depth: 0, backPosture: 0 };
                 bottomHoldFrames = 0;
                 console.log(`SQUAT_PHASE: standing (스쿼트 완료)`);
             }
-            // else: 여전히 상승 중
-            
-            frameCount++; // 상승 상태에서도 프레임 및 점수 누적
+            frameCount++;
             totalScores.depth += depthScore;
             totalScores.backPosture += backScore;
             break;
@@ -289,7 +285,7 @@ function resetApp() {
     lowestKneeAngle = 180;
     repReachedMinDepth = false;
     analysisStarted = false;
-    bottomHoldFrames = 0; // 초기화 추가
+    bottomHoldFrames = 0; 
     uploadSection.style.display = 'block';
     analysisSection.style.display = 'none';
     resultSection.style.display = 'none';
@@ -364,7 +360,6 @@ async function endAnalysis() {
 
     if (squatCount > 0) { 
         showRegularResults();
-        // 점수 계산은 마지막 스쿼트 사이클의 평균 점수를 사용 (아직 여러 횟수 평균은 아님)
         const finalScores = {
             depth: Math.round(totalScores.depth / frameCount),
             backPosture: Math.round(totalScores.backPosture / frameCount)

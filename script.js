@@ -3,7 +3,7 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypa
 const videoUpload = document.getElementById("videoUpload"), video = document.getElementById("analysisVideo"), canvasElement = document.getElementById("output_canvas"), canvasCtx = canvasElement.getContext("2d"), videoContainer = document.getElementById("videoContainer"), statusElement = document.getElementById("status"), feedbackList = document.getElementById("feedbackList"), shareStoryBtn = document.getElementById("shareStoryBtn"), uploadSection = document.getElementById('upload-section'), analysisSection = document.getElementById('analysis-section'), resultSection = document.getElementById('result-section'), storyCanvas = document.getElementById('story-canvas'), storyCtx = storyCanvas.getContext('2d'), coachFeedbackArea = document.getElementById('coach-feedback-area'), storyCanvasContainer = document.getElementById('story-canvas-container'), startAnalysisBtn = document.getElementById('startAnalysisBtn'), resetBtn = document.getElementById('resetBtn'), noSquatResultArea = document.getElementById('no-squat-result-area'), initialStatus = document.getElementById('initial-status');
 
 // 스쿼트 분석 관련 변수
-let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = { depth: 0, backPosture: 0 }, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false, bottomHoldFrames = 0; // totalScores 초기값 설정
+let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = { depth: 0, backPosture: 0 }, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false, bottomHoldFrames = 0;
 
 function showRegularResults() {
     if(storyCanvasContainer) storyCanvasContainer.style.display = 'block';
@@ -125,7 +125,6 @@ function analyzeSquat(landmarks) {
 
     for (let i = 0; i < requiredLandmarks.length; i++) {
         // 필수 랜드마크가 없거나 가시성이 낮을 경우 경고 출력 및 분석 건너뛰기
-        // 가시성 임계값 0.6 -> 0.3으로 대폭 완화
         if (!pose[requiredLandmarks[i]] || pose[requiredLandmarks[i]].visibility < 0.3) { 
             console.warn(`LANDMARK_STATUS: 필수 랜드마크 ${requiredLandmarks[i]}번이 감지되지 않거나 가시성(${pose[requiredLandmarks[i]]?.visibility.toFixed(2)})이 낮음. 스쿼트 분석 건너뛰기`);
             return;
@@ -175,17 +174,18 @@ function analyzeSquat(landmarks) {
 
     // 스쿼트 상태 머신 임계값
     const STANDING_KNEE_THRESHOLD = 155; 
-    const DESCENDING_KNEE_THRESHOLD = 160; // 이전 150 -> 160 (하강 시작 각도 더 완화)
+    const DESCENDING_KNEE_THRESHOLD = 160; 
     const BOTTOM_KNEE_THRESHOLD = 140;     
     const ASCENDING_KNEE_THRESHOLD = 135; 
 
-    const MIN_SQUAT_DURATION_FRAMES = 5; 
+    const MIN_SQUAT_DURATION_FRAMES = 4; // 이전 5 -> 4로 조정
     const MIN_BOTTOM_HOLD_FRAMES = 1;    
     
     // 상태 머신 로직
     switch (squatPhase) {
         case 'standing':
-            // 무릎 각도 조건만으로 하강 진입 시도 (hip.y > knee.y 조건 제거)
+            // 무릎 각도 조건만으로 하강 진입 시도 
+            // 153.98 <= 160 (참) 이므로 이제 진입될 것으로 예상
             if (kneeAngle <= DESCENDING_KNEE_THRESHOLD) { 
                 squatPhase = 'descending';
                 frameCount = 0;

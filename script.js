@@ -3,7 +3,7 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypa
 const videoUpload = document.getElementById("videoUpload"), video = document.getElementById("analysisVideo"), canvasElement = document.getElementById("output_canvas"), canvasCtx = canvasElement.getContext("2d"), videoContainer = document.getElementById("videoContainer"), statusElement = document.getElementById("status"), feedbackList = document.getElementById("feedbackList"), shareStoryBtn = document.getElementById("shareStoryBtn"), uploadSection = document.getElementById('upload-section'), analysisSection = document.getElementById('analysis-section'), resultSection = document.getElementById('result-section'), storyCanvas = document.getElementById('story-canvas'), storyCtx = storyCanvas.getContext('2d'), coachFeedbackArea = document.getElementById('coach-feedback-area'), storyCanvasContainer = document.getElementById('story-canvas-container'), startAnalysisBtn = document.getElementById('startAnalysisBtn'), resetBtn = document.getElementById('resetBtn'), noSquatResultArea = document.getElementById('no-squat-result-area'), initialStatus = document.getElementById('initial-status');
 
 // 스쿼트 분석 관련 변수
-let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = {}, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false;
+let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = {}, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false, bottomHoldFrames = 0; // bottomHoldFrames 추가
 
 function showRegularResults() {
     if(storyCanvasContainer) storyCanvasContainer.style.display = 'block';
@@ -173,11 +173,12 @@ function analyzeSquat(landmarks) {
 
     const standingThreshold = 160;
     // 임계값 조정: bottomThreshold 더 높이고, ascendingThreshold도 조정
-    const bottomThreshold = 125;   // 이전 120 -> 125로 조정 (더 얕은 스쿼트도 bottom으로 인정)
+    const bottomThreshold = 135;   // 이전 125 -> 135로 조정 (더 얕은 스쿼트도 bottom으로 인정)
     const descendingThreshold = 150;
-    const ascendingThreshold = 130;  // 이전 110 -> 130으로 조정 (더 펴져야 올라오는 것으로 인식)
+    const ascendingThreshold = 140;  // 이전 130 -> 140으로 조정 (더 펴져야 올라오는 것으로 인식)
     const minSquatDurationFrames = 5; 
-    
+    const minBottomFrames = 2; // 최하점(bottom) 상태 유지 최소 프레임 수 추가
+
     let currentPhase = squatPhase;
 
     if (kneeAngle > standingThreshold) {
@@ -186,19 +187,30 @@ function analyzeSquat(landmarks) {
             squatCount++;
             console.log(`SQUAT_COUNT: 스쿼트 횟수 증가! 현재 횟수: ${squatCount}`);
         }
-        repReachedMinDepth = false;
-        frameCount = 0;
-        totalScores = { depth: 0, backPosture: 0 };
+        repReachedMinDepth = false; // 새로운 사이클 시작 시 초기화
+        frameCount = 0; // 새로운 사이클 시작 시 초기화
+        totalScores = { depth: 0, backPosture: 0 }; // 새로운 사이클 시작 시 초기화
+        bottomHoldFrames = 0; // 최하점 유지 프레임 초기화
+
     } else if (kneeAngle <= descendingThreshold && squatPhase === 'standing') {
         currentPhase = 'descending';
         frameCount = 0;
+        bottomHoldFrames = 0; // 새로운 하강 시작 시 초기화
         console.log(`SQUAT_PHASE: descending (무릎 각도: ${kneeAngle.toFixed(2)})`);
-    } else if (kneeAngle <= bottomThreshold && (squatPhase === 'descending' || squatPhase === 'bottom')) {
-        currentPhase = 'bottom';
-        repReachedMinDepth = true;
-        console.log(`SQUAT_PHASE: bottom (무릎 각도: ${kneeAngle.toFixed(2)})`);
-    } else if (kneeAngle > ascendingThreshold && (squatPhase === 'descending' || squatPhase === 'bottom')) {
+
+    } else if (kneeAngle <= bottomThreshold) { // 무릎 각도가 bottomThreshold 이하인 경우
+        if (squatPhase === 'descending' || squatPhase === 'bottom') {
+            bottomHoldFrames++; // 최하점 임계값 이하로 유지되는 프레임 수 증가
+            if (bottomHoldFrames >= minBottomFrames) { // 충분한 시간 유지되면 bottom으로 확정
+                currentPhase = 'bottom';
+                repReachedMinDepth = true;
+                console.log(`SQUAT_PHASE: bottom (무릎 각도: ${kneeAngle.toFixed(2)}, 유지 프레임: ${bottomHoldFrames})`);
+            }
+        }
+    } else if (kneeAngle > ascendingThreshold && (squatPhase === 'bottom' || squatPhase === 'descending')) {
+        // bottom에서 올라오거나, descending 중인데 임계값 넘어 올라오는 경우
         currentPhase = 'ascending';
+        bottomHoldFrames = 0; // 올라오기 시작하면 유지 프레임 초기화
         console.log(`SQUAT_PHASE: ascending (무릎 각도: ${kneeAngle.toFixed(2)})`);
     }
 
@@ -210,7 +222,7 @@ function analyzeSquat(landmarks) {
         totalScores.backPosture += backScore;
     }
 
-    console.log(`FRAME_DATA: Phase: ${squatPhase}, Knee: ${kneeAngle.toFixed(2)}, Torso: ${torsoAngle.toFixed(2)}, DepthScore: ${depthScore.toFixed(0)}, BackScore: ${backScore.toFixed(0)}, FrameCount: ${frameCount}`);
+    console.log(`FRAME_DATA: Phase: ${squatPhase}, Knee: ${kneeAngle.toFixed(2)}, Torso: ${torsoAngle.toFixed(2)}, DepthScore: ${depthScore.toFixed(0)}, BackScore: ${backScore.toFixed(0)}, FrameCount: ${frameCount}, BottomHoldFrames: ${bottomHoldFrames}`);
 }
    
 async function createPoseLandmarker() {
@@ -240,6 +252,7 @@ function resetApp() {
     lowestKneeAngle = 180;
     repReachedMinDepth = false;
     analysisStarted = false;
+    bottomHoldFrames = 0; // 초기화 추가
     uploadSection.style.display = 'block';
     analysisSection.style.display = 'none';
     resultSection.style.display = 'none';

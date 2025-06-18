@@ -3,7 +3,7 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypa
 const videoUpload = document.getElementById("videoUpload"), video = document.getElementById("analysisVideo"), canvasElement = document.getElementById("output_canvas"), canvasCtx = canvasElement.getContext("2d"), videoContainer = document.getElementById("videoContainer"), statusElement = document.getElementById("status"), feedbackList = document.getElementById("feedbackList"), shareStoryBtn = document.getElementById("shareStoryBtn"), uploadSection = document.getElementById('upload-section'), analysisSection = document.getElementById('analysis-section'), resultSection = document.getElementById('result-section'), storyCanvas = document.getElementById('story-canvas'), storyCtx = storyCanvas.getContext('2d'), coachFeedbackArea = document.getElementById('coach-feedback-area'), storyCanvasContainer = document.getElementById('story-canvas-container'), startAnalysisBtn = document.getElementById('startAnalysisBtn'), resetBtn = document.getElementById('resetBtn'), noSquatResultArea = document.getElementById('no-squat-result-area'), initialStatus = document.getElementById('initial-status');
 
 // 스쿼트 분석 관련 변수
-let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = {}, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false, bottomHoldFrames = 0;
+let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = { depth: 0, backPosture: 0 }, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false, bottomHoldFrames = 0; // totalScores 초기값 설정
 
 function showRegularResults() {
     if(storyCanvasContainer) storyCanvasContainer.style.display = 'block';
@@ -210,7 +210,8 @@ function analyzeSquat(landmarks) {
             }
             // else: 여전히 하강 중이거나, 최하점 근처지만 아직 bottom 확정은 아님
 
-            if (squatPhase === 'descending' || squatPhase === 'bottom') { // 하강 또는 최하점 상태일 때만 점수 누적
+            // 'descending' 상태일 때 점수 누적 (bottom이 아니면)
+            if (squatPhase === 'descending') { 
                 frameCount++;
                 totalScores.depth += depthScore;
                 totalScores.backPosture += backScore;
@@ -360,12 +361,9 @@ async function endAnalysis() {
     analysisSection.style.display = 'none';
     resultSection.style.display = 'block';
 
-    if (squatCount > 0 && frameCount > 0) { // frameCount > 0 조건은 최종 스쿼트 완료 프레임을 나타내므로, 여기서는 스쿼트카운트만 봐도 됨
+    if (squatCount > 0) { // frameCount > 0 조건 제거 (스쿼트 횟수가 있다면 무조건 성공으로 간주)
         showRegularResults();
-        // 스쿼트 횟수가 인식되었다면, 최종 점수는 해당 스쿼트 사이클의 평균 점수를 사용
-        // 현재 로직에서 totalScores는 매 스쿼트 사이클마다 초기화되고 누적되므로, endAnalysis 시점의 totalScores는 마지막 스쿼트의 점수
-        // TODO: 여러 스쿼트 횟수에 대한 평균 점수를 내려면, 각 스쿼트 완료 시점의 점수를 배열에 저장해야 함
-        // 현재는 마지막 스쿼트의 평균 점수로 간주합니다.
+        // 점수 계산은 마지막 스쿼트 사이클의 평균 점수를 사용 (아직 여러 횟수 평균은 아님)
         const finalScores = {
             depth: Math.round(totalScores.depth / frameCount),
             backPosture: Math.round(totalScores.backPosture / frameCount)

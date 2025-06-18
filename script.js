@@ -180,10 +180,10 @@ function analyzeSquat(landmarks) {
 
     // --- 스쿼트 횟수 카운팅 로직 (디버깅 로그 추가) ---
     const standingThreshold = 160;
-    const bottomThreshold = 100;
+    const bottomThreshold = 125;
     const descendingThreshold = 150;
-    const ascendingThreshold = 110;
-    const minSquatDurationFrames = 5; 
+    const ascendingThreshold = 125;
+    const minSquatDurationFrames = 3; 
     
     let currentPhase = squatPhase;
 
@@ -218,7 +218,7 @@ function analyzeSquat(landmarks) {
     }
 
     // 매 프레임 주요 값들 로그
-    // console.log(`FRAME_DATA: Phase: ${squatPhase}, Knee: ${kneeAngle.toFixed(2)}, Torso: ${torsoAngle.toFixed(2)}, DepthScore: ${depthScore.toFixed(0)}, BackScore: ${backScore.toFixed(0)}, FrameCount: ${frameCount}`);
+    console.log(`FRAME_DATA: Phase: ${squatPhase}, Knee: ${kneeAngle.toFixed(2)}, Torso: ${torsoAngle.toFixed(2)}, DepthScore: ${depthScore.toFixed(0)}, BackScore: ${backScore.toFixed(0)}, FrameCount: ${frameCount}`);
 }
    
 async function createPoseLandmarker() {

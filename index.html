@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <base target="_top">
-    <meta charset="UTF-8">
+    <base target="_top"> <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <?!= include('styles.css.html'); ?>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
@@ -20,7 +19,7 @@
                     <label for="videoUpload" class="file-label">여기를 눌러 영상 선택 📂</label>
                     <input type="file" id="videoUpload" accept="video/*" style="display:none;">
                 </div>
-                 <div id="initial-status" style="text-align:center; margin-top:20px;"></div>
+                <div id="initial-status" style="text-align:center; margin-top:20px;"></div>
             </section>
             <section id="analysis-section" class="card" style="display: none;">
                 <h3>2. 영상 확인 및 분석</h3>
@@ -28,16 +27,16 @@
                     <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
                     <canvas id="output_canvas"></canvas>
                 </div>
-                 <div class="controls">
+                <div class="controls">
                     <button id="startAnalysisBtn" class="button-primary">이 영상으로 분석 시작하기 🔬</button>
-                 </div>
+                </div>
             </section>
             <section id="result-section" class="card" style="display: none;">
                 <h3>3. 최종 분석 결과 🏆</h3>
                 <div id="status" class="status-container"></div>
                 <div id="results-display-area">
-                     <div id="story-canvas-container">
-                         <canvas id="story-canvas" style="width:100%; border-radius: 8px;"></canvas>
+                    <div id="story-canvas-container">
+                        <canvas id="story-canvas" style="width:100%; border-radius: 8px;"></canvas>
                     </div>
                     <div id="no-squat-result-area" style="text-align: center; display: none;"></div>
                 </div>
@@ -50,6 +49,6 @@
             </section>
         </main>
     </div>
-    <?!= include('client_logic.js.html'); ?>
+    <script src="script.js" type="module"></script>
 </body>
 </html>

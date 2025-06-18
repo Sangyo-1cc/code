@@ -125,7 +125,9 @@ function analyzeSquat(landmarks) {
 
     for (let i = 0; i < requiredLandmarks.length; i++) {
         // 필수 랜드마크가 없거나 가시성이 낮을 경우 경고 출력 및 분석 건너뛰기
-        if (!pose[requiredLandmarks[i]] || pose[requiredLandlands[i]].visibility < 0.3) { 
+        // 가시성 임계값 0.6 -> 0.3으로 대폭 완화
+        // requiredLandlands -> requiredLandmarks 오타 수정
+        if (!pose[requiredLandmarks[i]] || pose[requiredLandmarks[i]].visibility < 0.3) { 
             console.warn(`LANDMARK_STATUS: 필수 랜드마크 ${requiredLandmarks[i]}번이 감지되지 않거나 가시성(${pose[requiredLandmarks[i]]?.visibility.toFixed(2)})이 낮음. 스쿼트 분석 건너뛰기`);
             return;
         }
@@ -184,7 +186,7 @@ function analyzeSquat(landmarks) {
     // 상태 머신 로직
     switch (squatPhase) {
         case 'standing':
-            // 무릎 각도 조건만으로 하강 진입 시도 (hip.y > knee.y 조건 제거)
+            // 무릎 각도 조건만으로 하강 진입 시도 
             if (kneeAngle <= DESCENDING_KNEE_THRESHOLD) { 
                 squatPhase = 'descending';
                 frameCount = 0;

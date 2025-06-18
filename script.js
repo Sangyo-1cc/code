@@ -127,7 +127,7 @@ function analyzeSquat(landmarks) {
         // 필수 랜드마크가 없거나 가시성이 낮을 경우 경고 출력 및 분석 건너뛰기
         // 가시성 임계값 0.6 -> 0.3으로 대폭 완화
         if (!pose[requiredLandmarks[i]] || pose[requiredLandmarks[i]].visibility < 0.3) { 
-            console.warn(`LANDMARK_STATUS: 필수 랜드마크 <span class="math-inline">\{requiredLandmarks\[i\]\}번이 감지되지 않거나 가시성\(</span>{pose[requiredLandmarks[i]]?.visibility.toFixed(2)})이 낮음. 스쿼트 분석 건너뛰기`);
+            console.warn(`LANDMARK_STATUS: 필수 랜드마크 ${requiredLandmarks[i]}번이 감지되지 않거나 가시성(${pose[requiredLandmarks[i]]?.visibility.toFixed(2)})이 낮음. 스쿼트 분석 건너뛰기`);
             return;
         }
     }
@@ -307,4 +307,107 @@ function handleVideoUpload(event) {
     if (!file) return;
 
     uploadSection.style.display = 'none';
-    analysisSection
+    analysisSection.style.display = 'block';
+    
+    const fileURL = URL.createObjectURL(file);
+    video.src = fileURL;
+    video.play();
+}
+
+function setupVideoDisplay() {
+    const aspectRatio = video.videoWidth / video.videoHeight;
+    let newWidth = videoContainer.clientWidth;
+    let newHeight = newWidth / aspectRatio;
+
+    videoContainer.style.height = `${newHeight}px`;
+    canvasElement.width = newWidth;
+    canvasElement.height = newHeight;
+    
+    previewLoop();
+}
+
+function previewLoop() {
+    if (animationFrameId) cancelAnimationFrame(animationId);
+    if (video.paused || video.ended) return;
+
+    canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+    animationFrameId = requestAnimationFrame(previewLoop);
+}
+
+function startAnalysis() {
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    analysisStarted = true;
+    updateStatus('🔬 분석 중...', true);
+    startAnalysisBtn.disabled = true;
+    startAnalysisBtn.textContent = "분석 중...";
+    video.loop = false;
+    video.currentTime = 0;
+    video.play(); 
+    processVideoFrame(); 
+}
+
+async function endAnalysis() {
+    updateStatus('✅ 분석 완료!');
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    analysisSection.style.display = 'none';
+    resultSection.style.display = 'block';
+
+    if (squatCount > 0) { 
+        showRegularResults();
+        const finalScores = {
+            depth: Math.round(totalScores.depth / frameCount),
+            backPosture: Math.round(totalScores.backPosture / frameCount)
+        };
+        const finalTotalScore = Math.round((finalScores.depth + finalScores.backPosture) / 2);
+        const qualitativeFeedback = getQualitativeFeedback(finalTotalScore);
+        
+        await createShareableImage(finalTotalScore, qualitativeFeedback);
+        feedbackList.textContent = qualitativeFeedback;
+
+    } else {
+        showNoSquatResults();
+    }
+}
+
+function processVideoFrame() {
+    if (!poseLandmarker || video.ended) {
+        if (video.ended) endAnalysis();
+        return;
+    }
+
+    poseLandmarker.detectForVideo(video, performance.now(), (result) => {
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+
+        const drawingUtils = new DrawingUtils(canvasCtx);
+        if (result.landmarks && result.landmarks.length > 0) {
+            drawingUtils.drawLandmarks(result.landmarks[0], {color: '#FFC107', lineWidth: 2});
+            drawingUtils.drawConnectors(result.landmarks[0], PoseLandmarker.POSE_CONNECTIONS, {color: '#FFFFFF', lineWidth: 2});
+            analyzeSquat(result.landmarks);
+        } else {
+            console.log("POSE_DETECTION_STATUS: 랜드마크가 감지되지 않음 (MediaPipe로부터 결과 없음).");
+        }
+    });
+    animationFrameId = requestAnimationFrame(processVideoFrame);
+}
+
+videoUpload.addEventListener('change', handleVideoUpload);
+video.addEventListener('loadedmetadata', setupVideoDisplay);
+video.addEventListener('ended', () => { if(!video.loop && analysisStarted) endAnalysis(); });
+startAnalysisBtn.addEventListener('click', (event) => { event.preventDefault(); startAnalysis(); });
+resetBtn.addEventListener('click', (event) => { event.preventDefault(); videoUpload.value = ''; resetApp(); });
+shareStoryBtn.addEventListener('click', (event) => { event.preventDefault();
+    if (squatCount === 0) {
+        alert("스쿼트가 감지되지 않아 결과 이미지를 다운로드할 수 없습니다.");
+        return;
+    }
+    const dataURL = storyCanvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `squat-analysis-story-${Date.now()}.png`;
+    link.href = dataURL;
+    link.click();
+});
+document.addEventListener('DOMContentLoaded', createPoseLandmarker);

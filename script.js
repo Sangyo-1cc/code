@@ -119,7 +119,7 @@ function analyzeSquat(landmarks) {
     const requiredLandmarks = [11, 12, 23, 24, 25, 26, 27, 28]; // 어깨, 엉덩이, 무릎, 발목
 
     if (!landmarks || landmarks.length === 0 || !landmarks[0]) {
-        console.warn("LANDMARK_STATUS: 랜드마크 데이터 없음. 스쿼트 분석 건너뜀.");
+//        console.warn("LANDMARK_STATUS: 랜드마크 데이터 없음. 스쿼트 분석 건너뜀.");
         return;
     }
     const pose = landmarks[0];
@@ -191,7 +191,7 @@ function analyzeSquat(landmarks) {
         currentPhase = 'standing';
         if (squatPhase === 'ascending' && repReachedMinDepth && frameCount >= minSquatDurationFrames) {
             squatCount++;
-            console.log(`SQUAT_COUNT: 스쿼트 횟수 증가! 현재 횟수: ${squatCount}`);
+          //  console.log(`SQUAT_COUNT: 스쿼트 횟수 증가! 현재 횟수: ${squatCount}`);
         }
         repReachedMinDepth = false;
         frameCount = 0;
@@ -199,14 +199,14 @@ function analyzeSquat(landmarks) {
     } else if (kneeAngle <= descendingThreshold && squatPhase === 'standing') {
         currentPhase = 'descending';
         frameCount = 0;
-        console.log(`SQUAT_PHASE: descending (무릎 각도: ${kneeAngle.toFixed(2)})`);
+       // console.log(`SQUAT_PHASE: descending (무릎 각도: ${kneeAngle.toFixed(2)})`);
     } else if (kneeAngle <= bottomThreshold && (squatPhase === 'descending' || squatPhase === 'bottom')) {
         currentPhase = 'bottom';
         repReachedMinDepth = true;
-        console.log(`SQUAT_PHASE: bottom (무릎 각도: ${kneeAngle.toFixed(2)})`);
+       // console.log(`SQUAT_PHASE: bottom (무릎 각도: ${kneeAngle.toFixed(2)})`);
     } else if (kneeAngle > ascendingThreshold && (squatPhase === 'descending' || squatPhase === 'bottom')) {
         currentPhase = 'ascending';
-        console.log(`SQUAT_PHASE: ascending (무릎 각도: ${kneeAngle.toFixed(2)})`);
+       // console.log(`SQUAT_PHASE: ascending (무릎 각도: ${kneeAngle.toFixed(2)})`);
     }
 
     squatPhase = currentPhase;
@@ -264,6 +264,7 @@ function resetApp() {
     }
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     initialStatus.textContent = '';
+    statusElement.innerHTML = ''; // 상태 메시지 영역도 비우기
 }
 
 function handleVideoUpload(event) {
@@ -298,6 +299,7 @@ function previewLoop() {
     animationFrameId = requestAnimationFrame(previewLoop);
 }
 
+// 수정될 startAnalysis 함수
 function startAnalysis() {
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     analysisStarted = true;
@@ -306,8 +308,13 @@ function startAnalysis() {
     startAnalysisBtn.textContent = "분석 중...";
     video.loop = false;
     video.currentTime = 0;
+
+    // 비디오가 실제로 재생될 준비가 되면 processVideoFrame 호출
+    video.onplay = () => {
+        processVideoFrame();
+        video.onplay = null; // 이벤트 리스너 제거 (한 번만 실행)
+    };
     video.play();
-    processVideoFrame();
 }
 
 async function endAnalysis() {

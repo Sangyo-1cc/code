@@ -3,7 +3,7 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypa
 const videoUpload = document.getElementById("videoUpload"), video = document.getElementById("analysisVideo"), canvasElement = document.getElementById("output_canvas"), canvasCtx = canvasElement.getContext("2d"), videoContainer = document.getElementById("videoContainer"), statusElement = document.getElementById("status"), feedbackList = document.getElementById("feedbackList"), shareStoryBtn = document.getElementById("shareStoryBtn"), uploadSection = document.getElementById('upload-section'), analysisSection = document.getElementById('analysis-section'), resultSection = document.getElementById('result-section'), storyCanvas = document.getElementById('story-canvas'), storyCtx = storyCanvas.getContext('2d'), coachFeedbackArea = document.getElementById('coach-feedback-area'), storyCanvasContainer = document.getElementById('story-canvas-container'), startAnalysisBtn = document.getElementById('startAnalysisBtn'), resetBtn = document.getElementById('resetBtn'), noSquatResultArea = document.getElementById('no-squat-result-area'), initialStatus = document.getElementById('initial-status');
 
 // 스쿼트 분석 관련 변수 복구 및 추가
-let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = {}, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false; // squatValidStart 제거, 더 단순화
+let poseLandmarker, squatCount = 0, squatPhase = 'standing', frameCount = 0, totalScores = {}, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, repReachedMinDepth = false, analysisStarted = false;
 
 function showRegularResults() {
     if(storyCanvasContainer) storyCanvasContainer.style.display = 'block';
@@ -113,22 +113,20 @@ function calculateAngle(a, b, c) {
     return ang;
 }
 
-// 스쿼트 분석 로직 재조정 (디버깅 로그 추가)
+// 스쿼트 분석 로직 (디버깅 로그 포함)
 function analyzeSquat(landmarks) {
-    // 랜드마크 유효성 검사 강화 및 필수 랜드마크 체크
-    const requiredLandmarks = [11, 12, 23, 24, 25, 26, 27, 28]; // 어깨, 엉덩이, 무릎, 발목
+    const requiredLandmarks = [11, 12, 23, 24, 25, 26, 27, 28]; 
 
     if (!landmarks || landmarks.length === 0 || !landmarks[0]) {
-//        console.warn("LANDMARK_STATUS: 랜드마크 데이터 없음. 스쿼트 분석 건너뜀.");
+        console.warn("LANDMARK_STATUS: 랜드마크 데이터 없음. 스쿼트 분석 건너뜀.");
         return;
     }
     const pose = landmarks[0];
 
-    // 필수 랜드마크가 모두 존재하는지 확인
     for (let i = 0; i < requiredLandmarks.length; i++) {
-        if (!pose[requiredLandmarks[i]] || pose[requiredLandmarks[i]].visibility < 0.6) { // visibility 임계값 0.7 -> 0.6으로 완화
-            console.warn(`LANDMARK_STATUS: 필수 랜드마크 ${requiredLandmarks[i]}번이 감지되지 않거나 가시성(${pose[requiredLandmarks[i]]?.visibility})이 낮음. 스쿼트 분석 건너뜀.`);
-            return; // 필수 랜드마크 중 하나라도 없거나 가시성이 낮으면 분석 건너뛰기
+        if (!pose[requiredLandmarks[i]] || pose[requiredLandmarks[i]].visibility < 0.6) {
+            console.warn(`LANDMARK_STATUS: 필수 랜드마크 <span class="math-inline">\{requiredLandmarks\[i\]\}번이 감지되지 않거나 가시성\(</span>{pose[requiredLandmarks[i]]?.visibility})이 낮음. 스쿼트 분석 건너뜀.`);
+            return;
         }
     }
     
@@ -146,20 +144,16 @@ function analyzeSquat(landmarks) {
     const ankle = {x:(leftAnkle.x + rightAnkle.x)/2, y:(leftAnkle.y + rightAnkle.y)/2};
     const shoulder = {x:(leftShoulder.x + rightShoulder.x)/2, y:(leftShoulder.y + rightShoulder.y)/2};
 
-    // 무릎 각도 (둔부-무릎-발목)
     const kneeAngle = (calculateAngle(hip, knee, ankle)); 
 
-    // 상체 각도 (어깨-엉덩이-수직)
     const vertical = { x: hip.x, y: hip.y - 1 };
     const torsoAngle = calculateAngle(shoulder, hip, vertical);
 
-    // 가장 낮은 무릎 각도 기록 (최고의 순간 감지용)
     if (kneeAngle < lowestKneeAngle) {
         lowestKneeAngle = kneeAngle;
         bestMomentTime = video.currentTime;
     }
 
-    // --- 스쿼트 자세 점수 계산 (기존 로직 유지, 필요시 개선) ---
     let depthScore = 0;
     if (kneeAngle <= 90) depthScore = 100;
     else if (kneeAngle <= 110) depthScore = Math.max(0, 100 - (kneeAngle - 90) * 2.5);
@@ -176,14 +170,12 @@ function analyzeSquat(landmarks) {
     } else {
         backScore = Math.max(0, 100 - (torsoAngle - idealTorsoMax) * 3);
     }
-    // --- 스쿼트 자세 점수 계산 끝 ---
 
-    // --- 스쿼트 횟수 카운팅 로직 (디버깅 로그 추가) ---
     const standingThreshold = 160;
-    const bottomThreshold = 125;
+    const bottomThreshold = 120; // 또는 125, 130 등
     const descendingThreshold = 150;
-    const ascendingThreshold = 125;
-    const minSquatDurationFrames = 3; 
+    const ascendingThreshold = 110; // 또는 120, 125 등
+    const minSquatDurationFrames = 5; 
     
     let currentPhase = squatPhase;
 
@@ -191,7 +183,7 @@ function analyzeSquat(landmarks) {
         currentPhase = 'standing';
         if (squatPhase === 'ascending' && repReachedMinDepth && frameCount >= minSquatDurationFrames) {
             squatCount++;
-          //  console.log(`SQUAT_COUNT: 스쿼트 횟수 증가! 현재 횟수: ${squatCount}`);
+            console.log(`SQUAT_COUNT: 스쿼트 횟수 증가! 현재 횟수: ${squatCount}`);
         }
         repReachedMinDepth = false;
         frameCount = 0;
@@ -199,14 +191,14 @@ function analyzeSquat(landmarks) {
     } else if (kneeAngle <= descendingThreshold && squatPhase === 'standing') {
         currentPhase = 'descending';
         frameCount = 0;
-       // console.log(`SQUAT_PHASE: descending (무릎 각도: ${kneeAngle.toFixed(2)})`);
+        console.log(`SQUAT_PHASE: descending (무릎 각도: ${kneeAngle.toFixed(2)})`);
     } else if (kneeAngle <= bottomThreshold && (squatPhase === 'descending' || squatPhase === 'bottom')) {
         currentPhase = 'bottom';
         repReachedMinDepth = true;
-       // console.log(`SQUAT_PHASE: bottom (무릎 각도: ${kneeAngle.toFixed(2)})`);
+        console.log(`SQUAT_PHASE: bottom (무릎 각도: ${kneeAngle.toFixed(2)})`);
     } else if (kneeAngle > ascendingThreshold && (squatPhase === 'descending' || squatPhase === 'bottom')) {
         currentPhase = 'ascending';
-       // console.log(`SQUAT_PHASE: ascending (무릎 각도: ${kneeAngle.toFixed(2)})`);
+        console.log(`SQUAT_PHASE: ascending (무릎 각도: ${kneeAngle.toFixed(2)})`);
     }
 
     squatPhase = currentPhase;
@@ -217,7 +209,7 @@ function analyzeSquat(landmarks) {
         totalScores.backPosture += backScore;
     }
 
-    // 매 프레임 주요 값들 로그
+    // FRAME_DATA 로그 활성화
     console.log(`FRAME_DATA: Phase: ${squatPhase}, Knee: ${kneeAngle.toFixed(2)}, Torso: ${torsoAngle.toFixed(2)}, DepthScore: ${depthScore.toFixed(0)}, BackScore: ${backScore.toFixed(0)}, FrameCount: ${frameCount}`);
 }
    
@@ -276,7 +268,7 @@ function handleVideoUpload(event) {
     
     const fileURL = URL.createObjectURL(file);
     video.src = fileURL;
-    video.play();
+    video.play(); // 여기는 즉시 재생
 }
 
 function setupVideoDisplay() {
@@ -295,101 +287,4 @@ function previewLoop() {
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     if (video.paused || video.ended) return;
 
-    canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-    animationFrameId = requestAnimationFrame(previewLoop);
-}
-
-// 수정될 startAnalysis 함수
-function startAnalysis() {
-    if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    analysisStarted = true;
-    updateStatus('🔬 분석 중...', true);
-    startAnalysisBtn.disabled = true;
-    startAnalysisBtn.textContent = "분석 중...";
-    video.loop = false;
-    video.currentTime = 0;
-
-    // 비디오가 실제로 재생될 준비가 되면 processVideoFrame 호출
-    video.onplay = () => {
-        processVideoFrame();
-        video.onplay = null; // 이벤트 리스너 제거 (한 번만 실행)
-    };
-    video.play();
-}
-
-async function endAnalysis() {
-    updateStatus('✅ 분석 완료!');
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-    }
-    analysisSection.style.display = 'none';
-    resultSection.style.display = 'block';
-
-    if (squatCount > 0 && frameCount > 0) {
-        showRegularResults();
-        const finalScores = {
-            depth: Math.round(totalScores.depth / frameCount),
-            backPosture: Math.round(totalScores.backPosture / frameCount)
-        };
-        const finalTotalScore = Math.round((finalScores.depth + finalScores.backPosture) / 2);
-        const qualitativeFeedback = getQualitativeFeedback(finalTotalScore);
-        
-        await createShareableImage(finalTotalScore, qualitativeFeedback);
-        feedbackList.textContent = qualitativeFeedback;
-
-        // 현재는 데이터 저장 비활성화
-        // const resultData = {
-        //     squatCount,
-        //     totalScore: finalTotalScore,
-        //     depthScore: finalScores.depth,
-        //     backPosture: finalScores.backPosture
-        // };
-        // google.script.run
-        //     .withSuccessHandler(r => console.log("시트 기록 성공:",r))
-        //     .withFailureHandler(e => console.error("시트 기록 실패:",e))
-        //     .logSquatData(resultData);
-    } else {
-        showNoSquatResults();
-    }
-}
-
-function processVideoFrame() {
-    if (!poseLandmarker || video.ended) {
-        if (video.ended) endAnalysis();
-        return;
-    }
-
-    poseLandmarker.detectForVideo(video, performance.now(), (result) => {
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-        canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-
-        const drawingUtils = new DrawingUtils(canvasCtx);
-        if (result.landmarks && result.landmarks.length > 0) {
-            drawingUtils.drawLandmarks(result.landmarks[0], {color: '#FFC107', lineWidth: 2});
-            drawingUtils.drawConnectors(result.landmarks[0], PoseLandmarker.POSE_CONNECTIONS, {color: '#FFFFFF', lineWidth: 2});
-            analyzeSquat(result.landmarks);
-        } else {
-            console.log("POSE_DETECTION_STATUS: 랜드마크가 감지되지 않음 (MediaPipe로부터 결과 없음).");
-        }
-    });
-    animationFrameId = requestAnimationFrame(processVideoFrame);
-}
-
-videoUpload.addEventListener('change', handleVideoUpload);
-video.addEventListener('loadedmetadata', setupVideoDisplay);
-video.addEventListener('ended', () => { if(!video.loop && analysisStarted) endAnalysis(); });
-startAnalysisBtn.addEventListener('click', (event) => { event.preventDefault(); startAnalysis(); });
-resetBtn.addEventListener('click', (event) => { event.preventDefault(); videoUpload.value = ''; resetApp(); });
-shareStoryBtn.addEventListener('click', (event) => { event.preventDefault();
-    if (squatCount === 0) {
-        alert("스쿼트가 감지되지 않아 결과 이미지를 다운로드할 수 없습니다.");
-        return;
-    }
-    const dataURL = storyCanvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `squat-analysis-story-${Date.now()}.png`;
-    link.href = dataURL;
-    link.click();
-});
-document.addEventListener('DOMContentLoaded', createPoseLandmarker);
+    canvasCtx.drawImage(video, 0, 0

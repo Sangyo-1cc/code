@@ -172,9 +172,10 @@ function analyzeSquat(landmarks) {
     }
 
     const standingThreshold = 160;
-    const bottomThreshold = 120; // 또는 125, 130 등
+    // 임계값 조정: bottomThreshold 더 높이고, ascendingThreshold도 조정
+    const bottomThreshold = 125;   // 이전 120 -> 125로 조정 (더 얕은 스쿼트도 bottom으로 인정)
     const descendingThreshold = 150;
-    const ascendingThreshold = 110; // 또는 120, 125 등
+    const ascendingThreshold = 130;  // 이전 110 -> 130으로 조정 (더 펴져야 올라오는 것으로 인식)
     const minSquatDurationFrames = 5; 
     
     let currentPhase = squatPhase;

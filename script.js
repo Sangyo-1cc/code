@@ -125,8 +125,8 @@ function analyzeSquat(landmarks) {
 
     for (let i = 0; i < requiredLandmarks.length; i++) {
         // 필수 랜드마크가 없거나 가시성이 낮을 경우 경고 출력 및 분석 건너뛰기
-        if (!pose[requiredLandmarks[i]] || pose[requiredLandmarks[i]].visibility < 0.3) { 
-            console.warn(`LANDMARK_STATUS: 필수 랜드마크 <span class="math-inline">\{requiredLandmarks\[i\]\}번이 감지되지 않거나 가시성\(</span>{pose[requiredLandmarks[i]]?.visibility.toFixed(2)})이 낮음. 스쿼트 분석 건너뛰기`);
+        if (!pose[requiredLandmarks[i]] || pose[requiredLandlands[i]].visibility < 0.3) { 
+            console.warn(`LANDMARK_STATUS: 필수 랜드마크 ${requiredLandmarks[i]}번이 감지되지 않거나 가시성(${pose[requiredLandmarks[i]]?.visibility.toFixed(2)})이 낮음. 스쿼트 분석 건너뛰기`);
             return;
         }
     }
@@ -178,13 +178,13 @@ function analyzeSquat(landmarks) {
     const BOTTOM_KNEE_THRESHOLD = 140;     
     const ASCENDING_KNEE_THRESHOLD = 135; 
 
-    const MIN_SQUAT_DURATION_FRAMES = 1; // 이전 4 -> 1로 조정 (최소 프레임 1로 설정)
+    const MIN_SQUAT_DURATION_FRAMES = 1; 
     const MIN_BOTTOM_HOLD_FRAMES = 1;    
     
     // 상태 머신 로직
     switch (squatPhase) {
         case 'standing':
-            // 무릎 각도 조건만으로 하강 진입 시도 
+            // 무릎 각도 조건만으로 하강 진입 시도 (hip.y > knee.y 조건 제거)
             if (kneeAngle <= DESCENDING_KNEE_THRESHOLD) { 
                 squatPhase = 'descending';
                 frameCount = 0;
@@ -257,4 +257,156 @@ function analyzeSquat(landmarks) {
 async function createPoseLandmarker() {
     initialStatus.innerHTML = `<span class="loading"></span> AI 모델을 로딩중입니다...`;
     try {
-        const filesetResolver = await FilesetResolver.forVisionTasks("https
+        const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
+        poseLandmarker = await PoseLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
+                delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numPoses: 1
+        });
+        initialStatus.textContent = 'AI 모델 준비 완료!';
+    } catch (error) {
+        console.error("MODEL_LOAD_ERROR:", error);
+        initialStatus.textContent = '❌ 모델 로딩 실패. 새로고침 해주세요.';
+    }
+}
+
+function resetApp() {
+    squatCount = 0;
+    frameCount = 0;
+    squatPhase = 'standing';
+    bestMomentTime = 0;
+    lowestKneeAngle = 180;
+    repReachedMinDepth = false;
+    analysisStarted = false;
+    bottomHoldFrames = 0; 
+    uploadSection.style.display = 'block';
+    analysisSection.style.display = 'none';
+    resultSection.style.display = 'none';
+    startAnalysisBtn.disabled = false;
+    startAnalysisBtn.textContent = "이 영상으로 분석 시작하기 🔬";
+    if(video.src) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+    }
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    initialStatus.textContent = '';
+    statusElement.innerHTML = ''; 
+}
+
+function handleVideoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    uploadSection.style.display = 'none';
+    analysisSection.style.display = 'block';
+    
+    const fileURL = URL.createObjectURL(file);
+    video.src = fileURL;
+    video.play();
+}
+
+function setupVideoDisplay() {
+    const aspectRatio = video.videoWidth / video.videoHeight;
+    let newWidth = videoContainer.clientWidth;
+    let newHeight = newWidth / aspectRatio;
+
+    videoContainer.style.height = `${newHeight}px`;
+    canvasElement.width = newWidth;
+    canvasElement.height = newHeight;
+    
+    previewLoop();
+}
+
+function previewLoop() {
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    if (video.paused || video.ended) return;
+
+    canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+    animationFrameId = requestAnimationFrame(previewLoop);
+}
+
+function startAnalysis() {
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    analysisStarted = true;
+    updateStatus('🔬 분석 중...', true);
+    startAnalysisBtn.disabled = true;
+    startAnalysisBtn.textContent = "분석 중...";
+    video.loop = false;
+    video.currentTime = 0;
+    video.play(); 
+    processVideoFrame(); 
+}
+
+async function endAnalysis() {
+    updateStatus('✅ 분석 완료!');
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    analysisSection.style.display = 'none';
+    resultSection.style.display = 'block';
+
+    if (squatCount > 0) { 
+        showRegularResults();
+        const finalScores = {
+            depth: Math.round(totalScores.depth / frameCount),
+            backPosture: Math.round(totalScores.backPosture / frameCount)
+        };
+        const finalTotalScore = Math.round((finalScores.depth + finalScores.backPosture) / 2);
+        const qualitativeFeedback = getQualitativeFeedback(finalTotalScore);
+        
+        await createShareableImage(finalTotalScore, qualitativeFeedback);
+        feedbackList.textContent = qualitativeFeedback;
+
+    } else {
+        showNoSquatResults();
+    }
+}
+
+function processVideoFrame() {
+    if (!poseLandmarker || video.ended) {
+        if (video.ended) endAnalysis();
+        return;
+    }
+
+    poseLandmarker.detectForVideo(video, performance.now(), (result) => {
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+
+        const drawingUtils = new DrawingUtils(canvasCtx);
+        if (result.landmarks && result.landmarks.length > 0) {
+            drawingUtils.drawLandmarks(result.landmarks[0], {color: '#FFC107', lineWidth: 2});
+            drawingUtils.drawConnectors(result.landmarks[0], PoseLandmarker.POSE_CONNECTIONS, {color: '#FFFFFF', lineWidth: 2});
+            analyzeSquat(result.landmarks);
+        } else {
+            console.log("POSE_DETECTION_STATUS: 랜드마크가 감지되지 않음 (MediaPipe로부터 결과 없음).");
+        }
+    });
+    animationFrameId = requestAnimationFrame(processVideoFrame);
+}
+
+videoUpload.addEventListener('change', handleVideoUpload);
+video.addEventListener('loadedmetadata', setupVideoDisplay);
+video.addEventListener('ended', () => { if(!video.loop && analysisStarted) endAnalysis(); });
+startAnalysisBtn.addEventListener('click', (event) => { event.preventDefault(); startAnalysis(); });
+resetBtn.addEventListener('click', (event) => { event.preventDefault(); videoUpload.value = ''; resetApp(); });
+shareStoryBtn.addEventListener('click', (event) => { event.preventDefault();
+    if (squatCount === 0) {
+        alert("스쿼트가 감지되지 않아 결과 이미지를 다운로드할 수 없습니다.");
+        return;
+    }
+    const dataURL = storyCanvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `squat-analysis-story-${Date.now()}.png`;
+    link.href = dataURL;
+    link.click();
+});
+document.addEventListener('DOMContentLoaded', createPoseLandmarker);

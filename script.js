@@ -71,13 +71,13 @@ function showRegularResults() {
 }
 
 function showNoSquatResults() {
-    if(storyCanvasContainer) storyCanvasContainer.style.display = 'none';
     if(noSquatResultArea) {
         noSquatResultArea.innerHTML = `<h2>분석 실패! 🤖</h2><p style="margin-top: 20px;">유효한 스쿼트 동작을 인식하지 못했습니다.</p><p>자세나 영상 각도를 확인 후 다시 시도해보세요.</p>`;
         noSquatResultArea.style.display = 'block';
     }
-    if(coachFeedbackArea) coachFeedbackArea.style.display = 'none';
-    if(shareStoryBtn) shareStoryBtn.style.display = 'none';
+    if(storyCanvasContainer) storyCanvasContainer.style.display = 'none'; // 수정: showRegularResults와 반대
+    if(coachFeedbackArea) coachFeedbackArea.style.display = 'none'; // 수정: showRegularResults와 반대
+    if(shareStoryBtn) shareStoryBtn.style.display = 'none'; // 수정: showRegularResults와 반대
 }
 
 function getQualitativeFeedback(score) {

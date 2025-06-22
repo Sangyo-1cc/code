@@ -24,19 +24,104 @@ const videoUpload = document.getElementById("videoUpload"),
 // 스쿼트 분석 관련 변수 (전역 스코프 유지)
 let poseLandmarker, squatCount = 0, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, analysisStarted = false;
 
-// SquatAnalyzer 인스턴스는 DOMContentLoaded 이후에 생성되도록 변경
+// SquatAnalyzer 인스턴스는 DOMContentLoaded 이후에 생성되도록 변경 (현재는 위로 이동했지만, 여전히 필요)
 let squatAnalyzer; 
 
 // 디버그 모드 토글 (개발 시 true, 배포 시 false)
 const DEBUG_MODE = true;
 
-// 기존 calculateAngle 함수를 클래스 외부에서 호출 가능하도록 유지
+// 유틸리티 함수들 (전역 스코프에 정의하여 모든 곳에서 접근 가능하도록)
+function updateStatus(message, isLoading = false) {
+    if (statusElement) statusElement.innerHTML = isLoading ? `<span class="loading"></span> ${message}` : message;
+}
+
 function calculateAngle(a, b, c) {
     const r = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
     let ang = Math.abs(r * 180.0 / Math.PI);
     if (ang > 180.0) ang = 360 - ang;
     return ang;
 }
+
+function getQualitativeFeedback(score) {
+    if (score >= 90) return "완벽에 가까운 스쿼트! 자세 교본으로 써도 되겠어요. 👏";
+    if (score >= 80) return "훌륭해요! 안정적인 자세가 돋보입니다. 여기서 만족하지 않으실 거죠? 😉";
+    if (score >= 70) return "좋아요! 기본기가 탄탄하시네요. 조금만 더 깊이에 신경 쓰면 완벽할 거예요.";
+    if (score >= 50) return "잘하고 있어요! 조금만 더 꾸준히 하면 금방 좋아질 거예요. 화이팅!";
+    if (score >= 30) return "음, 이게 스쿼트일까요? 🕺 열정은 100점! 자세는 우리와 함께 만들어가요!";
+    return "앗, 앉으려다 마신 건 아니죠? 😅 괜찮아요, 모든 시작은 미약하니까요!";
+}
+
+async function createShareableImage(finalScore, qualitativeFeedback) {
+    if (!video.duration || !video.videoWidth || !video.videoHeight) return;
+    storyCanvas.style.display = 'block';
+    const tempVideoCanvas = document.createElement('canvas');
+    const tempVideoCtx = tempVideoCanvas.getContext('2d');
+
+    video.currentTime = bestMomentTime;
+    await new Promise(resolve => { video.onseeked = resolve; });
+    
+    tempVideoCanvas.width = video.videoWidth;
+    tempVideoCanvas.height = video.videoHeight;
+    tempVideoCtx.drawImage(video, 0, 0, tempVideoCanvas.width, tempVideoCanvas.height);
+
+    const storyWidth = 1080, storyHeight = 1920;
+    storyCanvas.width = storyWidth;
+    storyCanvas.height = storyHeight;
+
+    storyCtx.fillStyle = '#1a1a1a';
+    storyCtx.fillRect(0, 0, storyWidth, storyHeight);
+
+    const gradient = storyCtx.createLinearGradient(0, 0, 0, storyHeight);
+    gradient.addColorStop(0, 'rgba(0,0,0,0.6)');
+    gradient.addColorStop(0.5, 'rgba(0,0,0,0.2)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
+    storyCtx.fillStyle = gradient;
+    storyCtx.fillRect(0, 0, storyWidth, storyHeight);
+
+    const videoAspectRatio = tempVideoCanvas.width / tempVideoCanvas.height;
+    const outputWidth = storyWidth;
+    const outputHeight = outputWidth / videoAspectRatio;
+    const yPos = (storyHeight - outputHeight) / 2.5;
+
+    storyCtx.drawImage(tempVideoCanvas, 0, yPos, outputWidth, outputHeight);
+
+    storyCtx.font = 'bold 120px "Noto Sans KR", sans-serif';
+    storyCtx.fillStyle = 'white';
+    storyCtx.textAlign = 'center';
+    storyCtx.shadowColor = 'rgba(0,0,0,0.5)';
+    storyCtx.shadowBlur = 10;
+    storyCtx.fillText('✨ 최고의 순간 ✨', storyWidth / 2, yPos - 50);
+
+    storyCtx.font = 'bold 250px "Noto Sans KR", sans-serif';
+    storyCtx.fillStyle = '#FFC107';
+    storyCtx.fillText(finalScore, storyWidth / 2, storyHeight - 350);
+
+    storyCtx.font = '60px "Noto Sans KR", sans-serif';
+    storyCtx.fillStyle = 'white';
+    storyCtx.fillText('/100', storyWidth / 2 + 250, storyHeight - 350);
+
+    storyCtx.shadowBlur = 0;
+    storyCtx.font = '55px "Noto Sans KR", sans-serif';
+    wrapText(storyCtx, qualitativeFeedback, storyWidth / 2, storyHeight - 200, storyWidth - 100, 70);
+}
+
+function wrapText(context, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    for(let n = 0; n < words.length; n++) {
+        let testLine = line + words[n] + ' ';
+        let metrics = context.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+            context.fillText(line, x, y);
+            line = words[n] + ' ';
+            y += lineHeight;
+        } else {
+            line = testLine;
+        }
+    }
+    context.fillText(line, x, y);
+}
+
 
 // 개선된 스쿼트 분석 함수를 포함하는 클래스
 class SquatAnalyzer {
@@ -352,13 +437,15 @@ function resetApp() {
         video.removeAttribute('src');
         video.load();
     }
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    initialStatus.textContent = '';
+    statusElement.innerHTML = ''; 
+
+    // animationFrameId 초기화 로직도 추가
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
     }
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    initialStatus.textContent = '';
-    statusElement.innerHTML = ''; 
 }
 
 function handleVideoUpload(event) {
@@ -417,7 +504,6 @@ async function endAnalysis() {
     if (squatCount > 0) { 
         showRegularResults();
         // 점수 계산은 SquatAnalyzer의 최종 누적 점수를 사용 
-        // 주의: squatAnalyzer.frameCount가 0인 경우 나누기 0 오류 발생 가능성 있으므로 체크 필요
         const finalScores = {
             depth: squatAnalyzer.frameCount > 0 ? Math.round(squatAnalyzer.totalScores.depth / squatAnalyzer.frameCount) : 0,
             backPosture: squatAnalyzer.frameCount > 0 ? Math.round(squatAnalyzer.totalScores.backPosture / squatAnalyzer.frameCount) : 0

@@ -24,8 +24,8 @@ const videoUpload = document.getElementById("videoUpload"),
 // 스쿼트 분석 관련 변수 (전역 스코프 유지)
 let poseLandmarker, squatCount = 0, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, analysisStarted = false;
 
-// SquatAnalyzer 인스턴스 생성 (이 시점에서 video 변수들은 이미 정의되어 있음)
-const squatAnalyzer = new SquatAnalyzer();
+// SquatAnalyzer 인스턴스는 DOMContentLoaded 이후에 생성되도록 변경
+let squatAnalyzer; 
 
 // 디버그 모드 토글 (개발 시 true, 배포 시 false)
 const DEBUG_MODE = true;
@@ -295,6 +295,21 @@ class SquatAnalyzer {
             console.log(`FRAME_DATA: Phase: ${this.squatPhase}, Knee: ${kneeAngle.toFixed(2)}, Torso: ${torsoAngle.toFixed(2)}, DepthScore: ${depthScore.toFixed(0)}, BackScore: ${backScore.toFixed(0)}, FrameCount: ${this.frameCount}, BottomHoldFrames: ${this.bottomHoldFrames}, HipY: ${hip.y.toFixed(2)}, KneeY: ${knee.y.toFixed(2)}, Velocity: ${velocity.toFixed(2)}, Quality: ${JSON.stringify(this.squatQualityChecks)}`);
         }
     }
+    // reset 메서드 추가: SquatAnalyzer 내부 상태를 초기화
+    reset() {
+        this.angleHistory = [];
+        this.velocityHistory = [];
+        this.squatPhase = 'standing';
+        this.frameCount = 0;
+        this.totalScores = { depth: 0, backPosture: 0 };
+        this.repReachedMinDepth = false;
+        this.bottomHoldFrames = 0;
+        this.squatQualityChecks = {
+            hasProperDepth: false,
+            hasControlledMovement: false,
+            hasSymmetricMovement: false
+        };
+    }
 }
    
 async function createPoseLandmarker() {
@@ -323,7 +338,9 @@ function resetApp() {
     analysisStarted = false;
     
     // SquatAnalyzer 내부 상태 초기화
-    squatAnalyzer.reset(); // SquatAnalyzer에 reset 메서드 추가 예정
+    if (squatAnalyzer) { // squatAnalyzer가 정의되었는지 확인 후 호출
+        squatAnalyzer.reset(); 
+    }
     
     uploadSection.style.display = 'block';
     analysisSection.style.display = 'none';
@@ -399,10 +416,11 @@ async function endAnalysis() {
 
     if (squatCount > 0) { 
         showRegularResults();
-        // 점수 계산은 SquatAnalyzer의 최종 누적 점수를 사용 (아직 여러 횟수 평균은 아님)
+        // 점수 계산은 SquatAnalyzer의 최종 누적 점수를 사용 
+        // 주의: squatAnalyzer.frameCount가 0인 경우 나누기 0 오류 발생 가능성 있으므로 체크 필요
         const finalScores = {
-            depth: Math.round(squatAnalyzer.totalScores.depth / squatAnalyzer.frameCount),
-            backPosture: Math.round(squatAnalyzer.totalScores.backPosture / squatAnalyzer.frameCount)
+            depth: squatAnalyzer.frameCount > 0 ? Math.round(squatAnalyzer.totalScores.depth / squatAnalyzer.frameCount) : 0,
+            backPosture: squatAnalyzer.frameCount > 0 ? Math.round(squatAnalyzer.totalScores.backPosture / squatAnalyzer.frameCount) : 0
         };
         const finalTotalScore = Math.round((finalScores.depth + finalScores.backPosture) / 2);
         const qualitativeFeedback = getQualitativeFeedback(finalTotalScore);

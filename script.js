@@ -1,25 +1,6 @@
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypack.dev/@mediapipe/tasks-vision@0.10.12";
 
-const videoUpload = document.getElementById("videoUpload"), video = document.getElementById("analysisVideo"), canvasElement = document.getElementById("output_canvas"), canvasCtx = canvasElement.getContext("2d"), videoContainer = document.getElementById("videoContainer"), statusElement = document.getElementById("status"), feedbackList = document.getElementById("feedbackList"), shareStoryBtn = document.getElementById("shareStoryBtn"), uploadSection = document.getElementById('upload-section'), analysisSection = document.getElementById('analysis-section'), resultSection = document.getElementById('result-section'), storyCanvas = document.getElementById('story-canvas'), storyCtx = storyCanvas.getContext('2d'), coachFeedbackArea = document.getElementById('coach-feedback-area'), storyCanvasContainer = document.getElementById('story-canvas-container'), startAnalysisBtn = document.getElementById('startAnalysisBtn'), resetBtn = document.getElementById('resetBtn'), noSquatResultArea = document.getElementById('no-squat-result-area'), initialStatus = document.getElementById('initial-status');
-
-// 스쿼트 분석 관련 변수 (SquatAnalyzer 클래스에서 관리할 상태 변수 일부 제외)
-let poseLandmarker, squatCount = 0, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, analysisStarted = false;
-
-// SquatAnalyzer 인스턴스 생성
-const squatAnalyzer = new SquatAnalyzer();
-
-// 디버그 모드 토글 (개발 시 true, 배포 시 false)
-const DEBUG_MODE = true;
-
-// 기존 calculateAngle 함수를 클래스 외부에서 호출 가능하도록 유지
-function calculateAngle(a, b, c) {
-    const r = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-    let ang = Math.abs(r * 180.0 / Math.PI);
-    if (ang > 180.0) ang = 360 - ang;
-    return ang;
-}
-
-// 개선된 스쿼트 분석 함수를 포함하는 클래스
+// SquatAnalyzer 클래스를 먼저 정의합니다.
 class SquatAnalyzer {
     constructor() {
         this.angleHistory = [];
@@ -81,8 +62,6 @@ class SquatAnalyzer {
         this.squatQualityChecks.hasControlledMovement = avgVelocity < 15; // 임계값 조정 가능 (프레임 단위 각도 변화)
         
         // 3. 대칭적 움직임 (좌우 무릎 높이 차이) - 정규화된 좌표 기준
-        // MediaPipe 좌표는 0~1 사이로 정규화되어 있으므로 0.05는 꽤 큰 차이일 수 있음.
-        // 테스트 필요: 0.02 또는 0.03으로 더 엄격하게
         const kneeDifference = Math.abs(leftKnee.y - rightKnee.y);
         this.squatQualityChecks.hasSymmetricMovement = kneeDifference < 0.05; 
         
@@ -102,15 +81,13 @@ class SquatAnalyzer {
         const rightShoulder = pose[12];
         
         if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
-            // 손이 어깨보다 많이 위에 있으면 춤추는 동작일 가능성
-            // Y좌표는 아래로 갈수록 커지므로, 손이 어깨보다 '위'에 있다면 Y좌표는 더 작아야 함.
             const handsAboveShoulders = 
-                (leftWrist.y < leftShoulder.y - 0.1) || // 어깨 Y보다 0.1 작으면 (위에 있으면)
+                (leftWrist.y < leftShoulder.y - 0.1) || 
                 (rightWrist.y < rightShoulder.y - 0.1);
             
             if (handsAboveShoulders) {
                 if (DEBUG_MODE) console.log("MOVEMENT_FILTER: 춤추는 동작 감지 - 스쿼트 분석 제외 (손 위치)");
-                return true; // 비스쿼트 동작으로 판단
+                return true; 
             }
         }
         
@@ -127,13 +104,12 @@ class SquatAnalyzer {
         const vertical = { x: hip.x, y: hip.y - 1 };
         const torsoAngle = calculateAngle(shoulder, hip, vertical); // 외부 calculateAngle 사용
         
-        // 상체가 너무 앞으로 기울어진 경우 (요가 자세 등)
-        if (torsoAngle > 70) { // 70도 (수직에서 70도 기울어짐)는 상당히 많이 기운 것.
+        if (torsoAngle > 70) { 
             if (DEBUG_MODE) console.log("MOVEMENT_FILTER: 과도한 상체 기울임 감지 - 요가/스트레칭 동작으로 판단");
             return true;
         }
         
-        return false; // 스쿼트 가능성 있음
+        return false; 
     }
 
     // 메인 분석 함수 (기존 analyzeSquat 함수를 개선)
@@ -157,7 +133,7 @@ class SquatAnalyzer {
         
         // 비스쿼트 동작 필터링
         if (this.detectNonSquatMovement(landmarks)) {
-            return; // 스쿼트가 아닌 동작이므로 분석 중단
+            return; 
         }
         
         const leftHip = pose[23];
@@ -170,10 +146,10 @@ class SquatAnalyzer {
         const hip = {x:(leftHip.x + rightHip.x)/2, y:(leftHip.y + rightHip.y)/2};
         const knee = {x:(leftKnee.x + rightKnee.x)/2, y:(leftKnee.y + rightKnee.y)/2};
         const ankle = {x:(leftAnkle.x + rightAnkle.x)/2, y:(leftAnkle.y + rightAnkle.y)/2};
-        const shoulder = {x:(pose[11].x+pose[12].x)/2, y:(pose[11].y+pose[12].y)/2}; // 어깨점도 여기서 정의
+        const shoulder = {x:(pose[11].x+pose[12].x)/2, y:(pose[11].y+pose[12].y)/2}; 
 
         // 각도 계산 및 스무딩
-        const rawKneeAngle = calculateAngle(hip, knee, ankle); // 외부 calculateAngle 사용
+        const rawKneeAngle = calculateAngle(hip, knee, ankle); 
         const kneeAngle = this.smoothAngle(rawKneeAngle);
         
         // 움직임 속도 계산
@@ -184,13 +160,13 @@ class SquatAnalyzer {
         
         if (!isValidSquat) {
             if (DEBUG_MODE) console.log("QUALITY_CHECK: 스쿼트 품질 기준 미달 - 카운트 제외");
-            return; // 품질 기준 미달이므로 카운트하지 않음
+            return; 
         }
         
         // 점수 계산 (클래스 내부에서 계산하도록 변경)
         let depthScore = 0;
-        if (kneeAngle >= 160) depthScore = 0;
-        else if (kneeAngle <= 60) depthScore = 100;
+        if (kneeAngle >= 160) depthScore = 0; 
+        else if (kneeAngle <= 60) depthScore = 100; 
         else { 
             depthScore = 100 - ((kneeAngle - 60) / (160 - 60)) * 100; 
         }
@@ -396,7 +372,7 @@ async function endAnalysis() {
 
     if (squatCount > 0) { 
         showRegularResults();
-        // 스쿼트 분석기의 최종 점수를 가져옴
+        // 점수 계산은 SquatAnalyzer의 최종 누적 점수를 사용 (아직 여러 횟수 평균은 아님)
         const finalScores = {
             depth: Math.round(squatAnalyzer.totalScores.depth / squatAnalyzer.frameCount),
             backPosture: Math.round(squatAnalyzer.totalScores.backPosture / squatAnalyzer.frameCount)

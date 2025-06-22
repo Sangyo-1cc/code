@@ -1,6 +1,44 @@
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypack.dev/@mediapipe/tasks-vision@0.10.12";
 
-// SquatAnalyzer 클래스를 먼저 정의합니다.
+// DOM 요소 참조 (전역 스코프 유지)
+const videoUpload = document.getElementById("videoUpload"), 
+      video = document.getElementById("analysisVideo"), 
+      canvasElement = document.getElementById("output_canvas"), 
+      canvasCtx = canvasElement.getContext("2d"), 
+      videoContainer = document.getElementById("videoContainer"), 
+      statusElement = document.getElementById("status"), 
+      feedbackList = document.getElementById("feedbackList"), 
+      shareStoryBtn = document.getElementById("shareStoryBtn"), 
+      uploadSection = document.getElementById('upload-section'), 
+      analysisSection = document.getElementById('analysis-section'), 
+      resultSection = document.getElementById('result-section'), 
+      storyCanvas = document.getElementById('story-canvas'), 
+      storyCtx = storyCanvas.getContext('2d'), 
+      coachFeedbackArea = document.getElementById('coach-feedback-area'), 
+      storyCanvasContainer = document.getElementById('story-canvas-container'), 
+      startAnalysisBtn = document.getElementById('startAnalysisBtn'), 
+      resetBtn = document.getElementById('resetBtn'), 
+      noSquatResultArea = document.getElementById('no-squat-result-area'), 
+      initialStatus = document.getElementById('initial-status');
+
+// 스쿼트 분석 관련 변수 (전역 스코프 유지)
+let poseLandmarker, squatCount = 0, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, analysisStarted = false;
+
+// SquatAnalyzer 인스턴스 생성 (이 시점에서 video 변수들은 이미 정의되어 있음)
+const squatAnalyzer = new SquatAnalyzer();
+
+// 디버그 모드 토글 (개발 시 true, 배포 시 false)
+const DEBUG_MODE = true;
+
+// 기존 calculateAngle 함수를 클래스 외부에서 호출 가능하도록 유지
+function calculateAngle(a, b, c) {
+    const r = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+    let ang = Math.abs(r * 180.0 / Math.PI);
+    if (ang > 180.0) ang = 360 - ang;
+    return ang;
+}
+
+// 개선된 스쿼트 분석 함수를 포함하는 클래스
 class SquatAnalyzer {
     constructor() {
         this.angleHistory = [];
@@ -285,19 +323,8 @@ function resetApp() {
     analysisStarted = false;
     
     // SquatAnalyzer 내부 상태 초기화
-    squatAnalyzer.squatPhase = 'standing';
-    squatAnalyzer.frameCount = 0;
-    squatAnalyzer.totalScores = { depth: 0, backPosture: 0 };
-    squatAnalyzer.repReachedMinDepth = false;
-    squatAnalyzer.bottomHoldFrames = 0;
-    squatAnalyzer.angleHistory = [];
-    squatAnalyzer.velocityHistory = [];
-    squatAnalyzer.squatQualityChecks = {
-        hasProperDepth: false,
-        hasControlledMovement: false,
-        hasSymmetricMovement: false
-    };
-
+    squatAnalyzer.reset(); // SquatAnalyzer에 reset 메서드 추가 예정
+    
     uploadSection.style.display = 'block';
     analysisSection.style.display = 'none';
     resultSection.style.display = 'none';

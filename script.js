@@ -75,9 +75,9 @@ function showNoSquatResults() {
         noSquatResultArea.innerHTML = `<h2>분석 실패! 🤖</h2><p style="margin-top: 20px;">유효한 스쿼트 동작을 인식하지 못했습니다.</p><p>자세나 영상 각도를 확인 후 다시 시도해보세요.</p>`;
         noSquatResultArea.style.display = 'block';
     }
-    if(storyCanvasContainer) storyCanvasContainer.style.display = 'none'; // 수정: showRegularResults와 반대
-    if(coachFeedbackArea) coachFeedbackArea.style.display = 'none'; // 수정: showRegularResults와 반대
-    if(shareStoryBtn) shareStoryBtn.style.display = 'none'; // 수정: showRegularResults와 반대
+    if(storyCanvasContainer) storyCanvasContainer.style.display = 'none';
+    if(coachFeedbackArea) coachFeedbackArea.style.display = 'none';
+    if(shareStoryBtn) shareStoryBtn.style.display = 'none';
 }
 
 function getQualitativeFeedback(score) {
@@ -189,12 +189,6 @@ class SquatAnalyzer {
         this.repReachedMinDepth = false; // 클래스 내부에서 최소 깊이 도달 여부 관리
         this.bottomHoldFrames = 0; // 클래스 내부에서 최하점 유지 프레임 관리
 
-        this.squatQualityChecks = {
-            hasProperDepth: false,
-            hasControlledMovement: false,
-            hasSymmetricMovement: false
-        };
-
         // 임계값 (당신 제안 반영)
         this.STANDING_KNEE_THRESHOLD = 160;     // 서있는 상태
         this.DESCENDING_KNEE_THRESHOLD = 150;   // 하강 시작
@@ -294,7 +288,7 @@ class SquatAnalyzer {
         const requiredLandmarks = [11, 12, 23, 24, 25, 26, 27, 28]; // 어깨, 엉덩이, 무릎, 발목
         
         if (!landmarks || landmarks.length === 0 || !landmarks[0]) {
-            if (DEBUG_MODE) console.warn("LANDMARK_STATUS: 랜드마크 데이터 없음. 스쿼트 분석 건너뜀.");
+            if (DEBUG_MODE) console.warn("LANDMARK_STATUS: 랜드마크 데이터 없음. 스쿼트 분석 건너뜜.");
             return;
         }
         

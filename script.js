@@ -1,25 +1,31 @@
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.skypack.dev/@mediapipe/tasks-vision@0.10.12";
 
 // DOM 요소 참조 (전역 스코프 유지)
-const videoUpload = document.getElementById("videoUpload"), 
-      video = document.getElementById("analysisVideo"), 
-      canvasElement = document.getElementById("output_canvas"), 
-      canvasCtx = canvasElement.getContext("2d"), 
-      videoContainer = document.getElementById("videoContainer"), 
-      statusElement = document.getElementById("status"), 
-      feedbackList = document.getElementById("feedbackList"), 
-      shareStoryBtn = document.getElementById("shareStoryBtn"), 
-      uploadSection = document.getElementById('upload-section'), 
-      analysisSection = document.getElementById('analysis-section'), 
-      resultSection = document.getElementById('result-section'), 
-      storyCanvas = document.getElementById('story-canvas'), 
-      storyCtx = storyCanvas.getContext('2d'), 
-      coachFeedbackArea = document.getElementById('coach-feedback-area'), 
-      storyCanvasContainer = document.getElementById('story-canvas-container'), 
-      startAnalysisBtn = document.getElementById('startAnalysisBtn'), 
-      resetBtn = document.getElementById('resetBtn'), 
-      noSquatResultArea = document.getElementById('no-squat-result-area'), 
-      initialStatus = document.getElementById('initial-status');
+const getElement = (id) => {
+    const element = document.getElementById(id);
+    if (!element) console.warn(`Element with id '${id}' not found`);
+    return element;
+};
+
+const videoUpload = getElement("videoUpload");
+const video = getElement("analysisVideo");
+const canvasElement = getElement("output_canvas");
+const canvasCtx = canvasElement?.getContext("2d");
+const videoContainer = getElement("videoContainer");
+const statusElement = getElement("status");
+const feedbackList = getElement("feedbackList");
+const shareStoryBtn = getElement("shareStoryBtn");
+const uploadSection = getElement('upload-section');
+const analysisSection = getElement('analysis-section');
+const resultSection = getElement('result-section');
+const storyCanvas = getElement('story-canvas');
+const storyCtx = storyCanvas?.getContext('2d');
+const coachFeedbackArea = getElement('coach-feedback-area');
+const storyCanvasContainer = getElement('story-canvas-container');
+const startAnalysisBtn = getElement('startAnalysisBtn');
+const resetBtn = getElement('resetBtn');
+const noSquatResultArea = getElement('no-squat-result-area');
+const initialStatus = getElement('initial-status');
 
 // 스쿼트 분석 관련 변수 (전역 스코프 유지)
 let poseLandmarker, squatCount = 0, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, analysisStarted = false;
@@ -30,7 +36,28 @@ let squatAnalyzer;
 // 디버그 모드 토글 (개발 시 true, 배포 시 false)
 const DEBUG_MODE = true;
 
-// ======== 유틸리티 함수들 (전역 스코프에 정의하여 모든 곳에서 접근 가능하도록) ========
+// ======== 유틸리티 함수들 (클래스 및 이벤트 리스너보다 먼저 정의되어야 함) ========
+
+function calculateAngle(point1, point2, point3) {
+    const vector1 = {
+        x: point1.x - point2.x,
+        y: point1.y - point2.y
+    };
+    const vector2 = {
+        x: point3.x - point2.x,
+        y: point3.y - point2.y
+    };
+    
+    const dot = vector1.x * vector2.x + vector1.y * vector2.y;
+    const mag1 = Math.sqrt(vector1.x * vector1.x + vector1.y * vector1.y);
+    const mag2 = Math.sqrt(vector2.x * vector2.x + vector2.y * vector2.y);
+    
+    if (mag1 === 0 || mag2 === 0) return 0;
+    
+    const cosAngle = dot / (mag1 * mag2);
+    const clampedCos = Math.max(-1, Math.min(1, cosAngle));
+    return Math.acos(clampedCos) * (180 / Math.PI);
+}
 
 function updateStatus(message, isLoading = false) {
     if (statusElement) statusElement.innerHTML = isLoading ? `<span class="loading"></span> ${message}` : message;
@@ -63,13 +90,29 @@ function getQualitativeFeedback(score) {
 }
 
 async function createShareableImage(finalScore, qualitativeFeedback) {
-    if (!video.duration || !video.videoWidth || !video.videoHeight) return;
+    if (!video || !video.duration || !video.videoWidth || !video.videoHeight) return;
+    if (!storyCanvas || !storyCtx) return;
+    
     storyCanvas.style.display = 'block';
     const tempVideoCanvas = document.createElement('canvas');
     const tempVideoCtx = tempVideoCanvas.getContext('2d');
 
     video.currentTime = bestMomentTime;
-    await new Promise(resolve => { video.onseeked = resolve; });
+    
+    await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            video.removeEventListener('seeked', onSeeked);
+            reject(new Error('Video seek timeout'));
+        }, 5000);
+        
+        const onSeeked = () => {
+            clearTimeout(timeout);
+            video.removeEventListener('seeked', onSeeked);
+            resolve();
+        };
+        
+        video.addEventListener('seeked', onSeeked);
+    });
     
     tempVideoCanvas.width = video.videoWidth;
     tempVideoCanvas.height = video.videoHeight;
@@ -427,7 +470,7 @@ async function createPoseLandmarker() {
     }
 }
 
-// DOMContentLoaded 이벤트 리스너 내부에서 squatAnalyzer 인스턴스를 생성
+// DOMContentLoaded 이벤트 리스너
 document.addEventListener('DOMContentLoaded', () => {
     squatAnalyzer = new SquatAnalyzer(); // 이곳에서 인스턴스 생성
     createPoseLandmarker(); // 기존 createPoseLandmarker 호출은 유지
@@ -444,19 +487,26 @@ function resetApp() {
         squatAnalyzer.reset(); 
     }
     
-    uploadSection.style.display = 'block';
-    analysisSection.style.display = 'none';
-    resultSection.style.display = 'none';
-    startAnalysisBtn.disabled = false;
-    startAnalysisBtn.textContent = "이 영상으로 분석 시작하기 🔬";
-    if(video.src) {
+    if (uploadSection) uploadSection.style.display = 'block';
+    if (analysisSection) analysisSection.style.display = 'none';
+    if (resultSection) resultSection.style.display = 'none';
+    if (startAnalysisBtn) {
+        startAnalysisBtn.disabled = false;
+        startAnalysisBtn.textContent = "이 영상으로 분석 시작하기 🔬";
+    }
+    
+    if (video && video.src) {
         video.pause();
         video.removeAttribute('src');
         video.load();
     }
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    initialStatus.textContent = '';
-    statusElement.innerHTML = ''; 
+    
+    if (canvasCtx && canvasElement) {
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    }
+    
+    if (initialStatus) initialStatus.textContent = '';
+    if (statusElement) statusElement.innerHTML = ''; 
 
     // animationFrameId 초기화 로직도 추가
     if (animationFrameId) {
@@ -467,7 +517,7 @@ function resetApp() {
 
 function handleVideoUpload(event) {
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file || !uploadSection || !analysisSection || !video) return;
 
     uploadSection.style.display = 'none';
     analysisSection.style.display = 'block';
@@ -478,6 +528,8 @@ function handleVideoUpload(event) {
 }
 
 function setupVideoDisplay() {
+    if (!video || !videoContainer || !canvasElement) return;
+    
     const aspectRatio = video.videoWidth / video.videoHeight;
     let newWidth = videoContainer.clientWidth;
     let newHeight = newWidth / aspectRatio;
@@ -491,13 +543,15 @@ function setupVideoDisplay() {
 
 function previewLoop() {
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    if (video.paused || video.ended) return;
+    if (!video || video.paused || video.ended || !canvasCtx || !canvasElement) return;
 
     canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
     animationFrameId = requestAnimationFrame(previewLoop);
 }
 
 function startAnalysis() {
+    if (!video || !startAnalysisBtn) return;
+    
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     analysisStarted = true;
     updateStatus('🔬 분석 중...', true);
@@ -515,8 +569,8 @@ async function endAnalysis() {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
     }
-    analysisSection.style.display = 'none';
-    resultSection.style.display = 'block';
+    if (analysisSection) analysisSection.style.display = 'none';
+    if (resultSection) resultSection.style.display = 'block';
 
     if (squatCount > 0) { 
         showRegularResults();
@@ -537,8 +591,8 @@ async function endAnalysis() {
 }
 
 function processVideoFrame() {
-    if (!poseLandmarker || video.ended) {
-        if (video.ended) endAnalysis();
+    if (!poseLandmarker || !video || video.ended || !canvasCtx || !canvasElement) {
+        if (video && video.ended) endAnalysis();
         return;
     }
 
@@ -559,21 +613,24 @@ function processVideoFrame() {
     animationFrameId = requestAnimationFrame(processVideoFrame);
 }
 
-videoUpload.addEventListener('change', handleVideoUpload);
-video.addEventListener('loadedmetadata', setupVideoDisplay);
-video.addEventListener('ended', () => { if(!video.loop && analysisStarted) endAnalysis(); });
-startAnalysisBtn.addEventListener('click', (event) => { event.preventDefault(); startAnalysis(); });
-resetBtn.addEventListener('click', (event) => { event.preventDefault(); videoUpload.value = ''; resetApp(); });
-shareStoryBtn.addEventListener('click', (event) => { event.preventDefault();
+// 이벤트 리스너들
+videoUpload?.addEventListener('change', handleVideoUpload);
+video?.addEventListener('loadedmetadata', setupVideoDisplay);
+video?.addEventListener('ended', () => { if(video && !video.loop && analysisStarted) endAnalysis(); });
+startAnalysisBtn?.addEventListener('click', (event) => { event.preventDefault(); startAnalysis(); });
+resetBtn?.addEventListener('click', (event) => { event.preventDefault(); videoUpload.value = ''; resetApp(); });
+shareStoryBtn?.addEventListener('click', (event) => { event.preventDefault();
     if (squatCount === 0) {
         alert("스쿼트가 감지되지 않아 결과 이미지를 다운로드할 수 없습니다.");
         return;
     }
-    const dataURL = storyCanvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `squat-analysis-story-${Date.now()}.png`;
-    link.href = dataURL;
-    link.click();
+    const dataURL = storyCanvas?.toDataURL('image/png');
+    if (dataURL) {
+        const link = document.createElement('a');
+        link.download = `squat-analysis-story-${Date.now()}.png`;
+        link.href = dataURL;
+        link.click();
+    }
 });
-// createPoseLandmarker 호출은 DOMContentLoaded 안으로 옮겨졌으므로, 이 줄은 제거합니다.
+// createPoseLandmarker는 DOMContentLoaded 안으로 이동되었으므로 이 줄은 삭제
 // document.addEventListener('DOMContentLoaded', createPoseLandmarker);

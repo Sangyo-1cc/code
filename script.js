@@ -345,19 +345,21 @@ class SquatAnalyzer {
         if (kneeAngle >= 160) depthScore = 0; 
         else if (kneeAngle <= 60) depthScore = 100; 
         else { 
-            depthScore = 100 - ((kneeAngle - 60) / (160 - 60)) * 100; 
+            depthScore = Math.round(100 - ((kneeAngle - 60) / (160 - 60)) * 100); 
         }
         depthScore = Math.round(Math.max(0, depthScore)); 
         
         let backScore = 0;
         const idealTorsoMin = 10;
         const idealTorsoMax = 50;
-        if (calculateAngle(shoulder, hip, { x: hip.x, y: hip.y - 1 }) >= idealTorsoMin && calculateAngle(shoulder, hip, { x: hip.x, y: hip.y - 1 }) <= idealTorsoMax) {
+        const torsoAngle = calculateAngle(shoulder, hip, { x: hip.x, y: hip.y - 1 }); // torsoAngle 정의
+        
+        if (torsoAngle >= idealTorsoMin && torsoAngle <= idealTorsoMax) {
             backScore = 100;
-        } else if (calculateAngle(shoulder, hip, { x: hip.x, y: hip.y - 1 }) < idealTorsoMin) {
-            backScore = Math.max(0, 100 - (idealTorsoMin - calculateAngle(shoulder, hip, { x: hip.x, y: hip.y - 1 })) * 5);
+        } else if (torsoAngle < idealTorsoMin) {
+            backScore = Math.round(Math.max(0, 100 - (idealTorsoMin - torsoAngle) * 5));
         } else {
-            backScore = Math.max(0, 100 - (calculateAngle(shoulder, hip, { x: hip.x, y: hip.y - 1 }) - idealTorsoMax) * 3);
+            backScore = Math.round(Math.max(0, 100 - (torsoAngle - idealTorsoMax) * 3));
         }
         backScore = Math.round(Math.max(0, backScore)); 
 
@@ -604,8 +606,12 @@ function processVideoFrame() {
         if (result.landmarks && result.landmarks.length > 0) {
             drawingUtils.drawLandmarks(result.landmarks[0], {color: '#FFC107', lineWidth: 2});
             drawingUtils.drawConnectors(result.landmarks[0], PoseLandmarker.POSE_CONNECTIONS, {color: '#FFFFFF', lineWidth: 2});
-            // SquatAnalyzer의 메인 분석 함수 호출
-            squatAnalyzer.analyzeBetterSquat(result.landmarks);
+            // SquatAnalyzer의 메인 분석 함수 호출 (this 컨텍스트 유지)
+            // analyzeBetterSquat는 SquatAnalyzer 클래스의 메서드이므로, squatAnalyzer 객체를 통해 호출해야 함
+            // 콜백 함수 내에서 this 컨텍스트가 달라질 수 있으므로 명시적으로 바인딩하거나 화살표 함수 사용
+            squatAnalyzer.analyzeBetterSquat(result.landmarks); // 이 부분은 이미 squatAnalyzer.analyzeBetterSquat로 호출하고 있으므로 this 컨텍스트 문제는 아닐 가능성 높음.
+            // TypeError는 analyzeBetterSquat 내부에서 squatAnalyzer.this.프로퍼티에 접근할 때 발생.
+            // 즉, analyzeBetterSquat 내부의 calculateAngle 호출 시 문제가 있을 가능성 확인 필요.
         } else {
             console.log("POSE_DETECTION_STATUS: 랜드마크가 감지되지 않음 (MediaPipe로부터 결과 없음).");
         }
@@ -632,5 +638,5 @@ shareStoryBtn?.addEventListener('click', (event) => { event.preventDefault();
         link.click();
     }
 });
-// createPoseLandmarker는 DOMContentLoaded 안으로 이동되었으므로 이 줄은 삭제
+// createPoseLandmarker 호출은 DOMContentLoaded 안으로 이동되었으므로 이 줄은 삭제
 // document.addEventListener('DOMContentLoaded', createPoseLandmarker);

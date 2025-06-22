@@ -24,22 +24,33 @@ const videoUpload = document.getElementById("videoUpload"),
 // 스쿼트 분석 관련 변수 (전역 스코프 유지)
 let poseLandmarker, squatCount = 0, bestMomentTime = 0, lowestKneeAngle = 180, animationFrameId, analysisStarted = false;
 
-// SquatAnalyzer 인스턴스는 DOMContentLoaded 이후에 생성되도록 변경 (현재는 위로 이동했지만, 여전히 필요)
+// SquatAnalyzer 인스턴스는 DOMContentLoaded 이후에 생성되도록 변경 (선언만 먼저)
 let squatAnalyzer; 
 
 // 디버그 모드 토글 (개발 시 true, 배포 시 false)
 const DEBUG_MODE = true;
 
-// 유틸리티 함수들 (전역 스코프에 정의하여 모든 곳에서 접근 가능하도록)
+// ======== 유틸리티 함수들 (전역 스코프에 정의하여 모든 곳에서 접근 가능하도록) ========
+
 function updateStatus(message, isLoading = false) {
     if (statusElement) statusElement.innerHTML = isLoading ? `<span class="loading"></span> ${message}` : message;
 }
 
-function calculateAngle(a, b, c) {
-    const r = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-    let ang = Math.abs(r * 180.0 / Math.PI);
-    if (ang > 180.0) ang = 360 - ang;
-    return ang;
+function showRegularResults() {
+    if(storyCanvasContainer) storyCanvasContainer.style.display = 'block';
+    if(noSquatResultArea) noSquatResultArea.style.display = 'none';
+    if(coachFeedbackArea) coachFeedbackArea.style.display = 'block';
+    if(shareStoryBtn) shareStoryBtn.style.display = 'block';
+}
+
+function showNoSquatResults() {
+    if(storyCanvasContainer) storyCanvasContainer.style.display = 'none';
+    if(noSquatResultArea) {
+        noSquatResultArea.innerHTML = `<h2>분석 실패! 🤖</h2><p style="margin-top: 20px;">유효한 스쿼트 동작을 인식하지 못했습니다.</p><p>자세나 영상 각도를 확인 후 다시 시도해보세요.</p>`;
+        noSquatResultArea.style.display = 'block';
+    }
+    if(coachFeedbackArea) coachFeedbackArea.style.display = 'none';
+    if(shareStoryBtn) shareStoryBtn.style.display = 'none';
 }
 
 function getQualitativeFeedback(score) {
@@ -416,6 +427,12 @@ async function createPoseLandmarker() {
     }
 }
 
+// DOMContentLoaded 이벤트 리스너 내부에서 squatAnalyzer 인스턴스를 생성
+document.addEventListener('DOMContentLoaded', () => {
+    squatAnalyzer = new SquatAnalyzer(); // 이곳에서 인스턴스 생성
+    createPoseLandmarker(); // 기존 createPoseLandmarker 호출은 유지
+});
+
 function resetApp() {
     squatCount = 0; // 전역 변수 초기화
     bestMomentTime = 0;
@@ -558,4 +575,5 @@ shareStoryBtn.addEventListener('click', (event) => { event.preventDefault();
     link.href = dataURL;
     link.click();
 });
-document.addEventListener('DOMContentLoaded', createPoseLandmarker);
+// createPoseLandmarker 호출은 DOMContentLoaded 안으로 옮겨졌으므로, 이 줄은 제거합니다.
+// document.addEventListener('DOMContentLoaded', createPoseLandmarker);

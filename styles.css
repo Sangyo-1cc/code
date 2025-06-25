@@ -70,11 +70,14 @@ button:disabled { background-color: #e9ecef; color: #adb5bd; cursor: not-allowed
     border: 1px solid #e0e0e0;
 }
 
-/* 인앱 광고 컨테이너 스타일 (선택 사항, AdSense가 자동으로 스타일링하지만 컨테이너 크기 제어용) */
+/* styles.css 파일 */
+
 .ad-container {
-    text-align: center;
-    min-height: 50px; /* 광고가 로드될 공간 확보 */
-    background-color: #e9e9e9; /* 광고 로딩 전 배경색 */
-    border-radius: 8px;
-    overflow: hidden; /* 광고가 넘치지 않도록 */
+    display: block; /* 광고 컨테이너는 항상 block으로 유지 */
+    width: 100%; /* 너비를 100%로 명시적으로 지정 */
+    text-align: center;
+    min-height: 50px; 
+    background-color: #e9e9e9; 
+    border-radius: 8px;
+    overflow: hidden; 
 }

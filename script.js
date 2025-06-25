@@ -618,6 +618,8 @@ function resetApp() {
     }
 }
 
+// script.js 파일에서 이 함수를 찾아서 아래 내용으로 교체하세요.
+
 function handleVideoUpload(event) {
     const file = event.target.files[0];
     if (!file || !uploadSection || !analysisSection || !video || !canvasElement) return;
@@ -638,15 +640,18 @@ function handleVideoUpload(event) {
 
     if (initialStatus) initialStatus.textContent = ''; 
 
-    // ✅ [수정됨] 분석 섹션이 보일 때, 아직 광고 로드가 안됐으면 로드 시도
-    const adContainer = analysisSection.querySelector('.adsbygoogle');
-    if (adContainer && !adContainer.hasAttribute('data-adsbygoogle-status')) {
-        try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch(e) {
-            console.warn("AdSense push error on video upload:", e);
+    // [🌟 수정된 부분 🌟]
+    // 0.1초 후에 광고를 로드하여 브라우저가 크기를 계산할 시간을 줍니다.
+    setTimeout(() => {
+        const adContainer = analysisSection.querySelector('.adsbygoogle');
+        if (adContainer && !adContainer.hasAttribute('data-adsbygoogle-status')) {
+            try {
+                (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } catch(e) {
+                console.warn("AdSense push error on video upload:", e);
+            }
         }
-    }
+    }, 100); 
 }
 
 function setupVideoDisplay() {
@@ -697,6 +702,8 @@ function startAnalysis() {
     video.currentTime = 0; 
 }
 
+// script.js 파일에서 이 함수를 찾아서 아래 내용으로 교체하세요.
+
 async function endAnalysis() {
     updateStatus('✅ 분석 완료!');
     if (animationFrameId) {
@@ -709,7 +716,9 @@ async function endAnalysis() {
     if (squatCount > 0 || squatAnalyzer.isSquatDetectedInVideo) { 
         showRegularResults();
         
-        const frameCount = squatAnalyzer.frameCount || 1; 
+      // ... (중간의 점수 계산 및 시트 저장 로직은 그대로 둡니다) ...
+      // ... (const finalTotalScore = ... 부터 google.script.run... 까지) ...
+        const frameCount = squatAnalyzer.frameCount || 1; 
         const finalScores = {
             depth: Math.round(squatAnalyzer.totalScores.depth / frameCount),
             backPosture: Math.round(squatAnalyzer.totalScores.backPosture / frameCount),
@@ -732,7 +741,6 @@ async function endAnalysis() {
         await createShareableImage(overallScore, detailedFeedbackHtml); 
         if (feedbackList) feedbackList.innerHTML = detailedFeedbackHtml; 
 
-        // 구글 시트 데이터 기록
         const dataToLog = {
             squatCount: squatCount,
             totalScore: finalTotalScore,
@@ -756,15 +764,18 @@ async function endAnalysis() {
         showNoSquatResults(); 
     }
 
-    // ✅ [수정됨] 결과 섹션이 보일 때, 아직 광고 로드가 안됐으면 로드 시도
-    const adContainer = resultSection.querySelector('.adsbygoogle');
-    if (adContainer && !adContainer.hasAttribute('data-adsbygoogle-status')) {
-        try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (e) {
-            console.warn("AdSense push error on endAnalysis:", e);
+    // [🌟 수정된 부분 🌟]
+    // 0.1초 후에 광고를 로드하여 브라우저가 크기를 계산할 시간을 줍니다.
+    setTimeout(() => {
+        const adContainer = resultSection.querySelector('.adsbygoogle');
+        if (adContainer && !adContainer.hasAttribute('data-adsbygoogle-status')) {
+            try {
+                (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } catch (e) {
+                console.warn("AdSense push error on endAnalysis:", e);
+            }
         }
-    }
+    }, 100);
 }
 
 function processVideoFrame() {

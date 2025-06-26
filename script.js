@@ -35,32 +35,53 @@ let squatAnalyzer;
 const DEBUG_MODE = true;
 
 
-// 🌟 훨씬 안정적인 광고 로딩 함수 🌟
+// ✅ 이 함수를 찾아서 교체해주세요.
+
 function loadAd(adContainer) {
     if (!adContainer || adContainer.hasAttribute('data-ad-loaded')) {
+        // 컨테이너가 없거나, 이미 광고 로드를 시도했다면 실행하지 않음
         return;
     }
+    
+    // 광고 로드를 시도했음을 표시 (중복 실행 방지)
     adContainer.setAttribute('data-ad-loaded', 'true');
+
     let attempts = 0;
-    const maxAttempts = 15;
+    const maxAttempts = 20; // 시도 횟수를 20번으로 늘림 (최대 2초 대기)
+
     const tryLoad = () => {
-        const containerWidth = adContainer.getBoundingClientRect().width;
+        // 광고 컨테이너의 부모 요소(section)를 가져옴
+        const parentElement = adContainer.parentElement;
+        if (!parentElement) {
+            console.error('Ad container has no parent element.');
+            return;
+        }
+
+        // [핵심] 브라우저가 강제로 레이아웃을 다시 계산하도록 함
+        // 이 코드를 읽는 것만으로도 브라우저는 너비를 다시 계산합니다.
+        const _ = parentElement.offsetHeight;
+
+        const containerWidth = parentElement.getBoundingClientRect().width;
+        
         if (containerWidth > 0) {
-            console.log(`Ad container is visible (width: ${containerWidth}px), pushing ad.`);
+            console.log(`Parent container is visible (width: ${containerWidth}px), pushing ad.`);
             try {
                 (window.adsbygoogle = window.adsbygoogle || []).push({});
             } catch (e) {
                 console.error("adsbygoogle.push() failed:", e);
             }
         } else if (attempts < maxAttempts) {
+            // 너비가 아직 0이면, 0.1초 후에 다시 시도
             attempts++;
-            console.log(`Ad container width is 0. Retrying... (Attempt ${attempts})`);
+            console.log(`Parent container width is 0. Retrying... (Attempt ${attempts})`);
             setTimeout(tryLoad, 100);
         } else {
-            console.error('Ad container failed to get a width after multiple attempts.');
+            console.error('Parent container failed to get a width after multiple attempts.');
         }
     };
-    tryLoad();
+    
+    // 최초 시도는 50ms(0.05초) 후에 시작하여 display:block이 적용될 시간을 줌
+    setTimeout(tryLoad, 50);
 }
 
 // ======== 유틸리티 함수들 ========

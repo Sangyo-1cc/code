@@ -4,9 +4,11 @@
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 외부 라이브러리 스크립트 -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5382502021593566" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" xintegrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- [중요] Google Apps Script에서는 이 방식으로 CSS를 불러와야 합니다. -->
     <?!= include('styles'); ?>
 
 </head>
@@ -17,6 +19,7 @@
             <p class="subtitle">당신의 스쿼트 자세를 분석하고 기록해 보세요</p>
         </header>
         <main>
+            <!-- 1. 영상 업로드 섹션 -->
             <section id="upload-section" class="card">
                 <h3>1. 영상 업로드</h3>
                 <div class="controls">
@@ -27,6 +30,7 @@
                 <p class="privacy-note">**개인 정보 보호:** 업로드하신 영상은 사용자 기기에서만 분석되며, **어떠한 영상도 서버에 저장되지 않습니다.**</p>
             </section>
 
+            <!-- 2. 분석 섹션 -->
             <section id="analysis-section" class="card" style="display: none;">
                 <h3>2. 영상 확인 및 분석</h3>
                 <div id="videoContainer">
@@ -46,6 +50,7 @@
                 </div>
             </section>
 
+            <!-- 3. 결과 섹션 -->
             <section id="result-section" class="card" style="display: none;">
                 <h3>3. 최종 분석 결과 🏆</h3>
                 <div id="status" class="status-container"></div>
@@ -61,20 +66,24 @@
                     <div id="feedbackList" class="feedback-item feedback-info"></div>
                 </div>
                 
-                <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
-                <button id="resetBtn" style="margin-top: 10px; background-color: var(--secondary-color); color: white; width: 100%;">새로운 영상 분석하기 🔄</button>
+                <div class="result-actions">
+                    <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
+                    <button id="resetBtn" class="button-secondary">새로운 영상 분석하기 🔄</button>
+                </div>
                 
                 <div class="ad-container" style="margin-top: 20px;">
                     <ins class="adsbygoogle"
                          style="display:block"
                          data-ad-client="ca-pub-5382502021593566"
-                         data-ad-slot="8453146528" data-ad-format="auto"
+                         data-ad-slot="1234567890" <!-- ⚠️ 여기에 실제 두 번째 광고 슬롯 ID를 입력하세요! -->
+                         data-ad-format="auto"
                          data-full-width-responsive="true"></ins>
                 </div>
             </section>
         </main>
     </div>
-    
+
+    <!-- [중요] Google Apps Script에서는 이 방식으로 JS를 불러와야 합니다. -->
     <?!= include('script'); ?>
 
 </body>

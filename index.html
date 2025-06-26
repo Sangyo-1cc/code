@@ -6,9 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5382502021593566" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    
-    <?!= include('styles'); ?>
-
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
@@ -29,7 +27,7 @@
 
             <section id="analysis-section" class="card" style="display: none;">
                 <h3>2. 영상 확인 및 분석</h3>
-                <div id="videoContainer">
+                <div id="video">
                     <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
                     <canvas id="output_canvas"></canvas>
                 </div>
@@ -43,6 +41,9 @@
                          data-ad-slot="8453146528"
                          data-ad-format="auto"
                          data-full-width-responsive="true"></ins>
+                    <script>
+                        (adsbygoogle = window.adsbygoogle || []).push({});
+                    </script>
                 </div>
             </section>
 
@@ -55,27 +56,37 @@
                     </div>
                     <div id="no-squat-result-area" style="text-align: center; display: none;"></div>
                 </div>
-                
-                <div id="coach-feedback-area">
-                    <h3>AI 코치의 한마디 🤖</h3>
-                    <div id="feedbackList" class="feedback-item feedback-info"></div>
+                <div class="result-actions">
+                    <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
+                    <button id="resetBtn" class="button-secondary">새로운 영상 분석하기 🔄</button>
                 </div>
-                
-                <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
-                <button id="resetBtn" style="margin-top: 10px; background-color: var(--secondary-color); color: white; width: 100%;">새로운 영상 분석하기 🔄</button>
-                
                 <div class="ad-container" style="margin-top: 20px;">
                     <ins class="adsbygoogle"
                          style="display:block"
                          data-ad-client="ca-pub-5382502021593566"
-                         data-ad-slot="8453146528" data-ad-format="auto"
+                         data-ad-slot="1234567890"
+                         data-ad-format="auto"
                          data-full-width-responsive="true"></ins>
+                    <script>
+                        (adsbygoogle = window.adsbygoogle || []).push({});
+                    </script>
                 </div>
             </section>
         </main>
     </div>
     
-    <?!= include('script'); ?>
-
+    <!-- 애드센스 초기화 스크립트 -->
+    <script>
+        // 페이지 로드 후 애드센스 초기화
+        window.addEventListener('load', function() {
+            try {
+                (adsbygoogle = window.adsbygoogle || []).push({});
+            } catch (e) {
+                console.log('AdSense initialization error:', e);
+            }
+        });
+    </script>
+    
+    <script src="script.js" type="module"></script>
 </body>
 </html>

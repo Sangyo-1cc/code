@@ -27,64 +27,154 @@
 
             <section id="analysis-section" class="card" style="display: none;">
                 <h3>2. 영상 확인 및 분석</h3>
-                <div id="video">
-                    <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
-                    <canvas id="output_canvas"></canvas>
+                <div id="videoContainer">
+                    <div id="video">
+                        <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
+                        <canvas id="output_canvas"></canvas>
+                    </div>
                 </div>
                 <div class="controls">
                     <button id="startAnalysisBtn" class="button-primary">이 영상으로 분석 시작하기 🔬</button>
                 </div>
+                <!-- 첫 번째 광고 -->
                 <div class="ad-container" style="margin-top: 20px;">
-                    <ins class="adsbygoogle"
+                    <ins class="adsbygoogle ad-unit-1"
                          style="display:block"
                          data-ad-client="ca-pub-5382502021593566"
                          data-ad-slot="8453146528"
                          data-ad-format="auto"
                          data-full-width-responsive="true"></ins>
-                    <script>
-                        (adsbygoogle = window.adsbygoogle || []).push({});
-                    </script>
                 </div>
             </section>
 
             <section id="result-section" class="card" style="display: none;">
                 <h3>3. 최종 분석 결과 🏆</h3>
                 <div id="status" class="status-container"></div>
+                
+                <!-- 코치 피드백 영역 -->
+                <div id="coach-feedback-area" style="margin: 20px 0;">
+                    <h4>💬 AI 코치 피드백</h4>
+                    <ul id="feedbackList"></ul>
+                </div>
+                
                 <div id="results-display-area">
                     <div id="story-canvas-container">
                         <canvas id="story-canvas" style="width:100%; border-radius: 8px;"></canvas>
                     </div>
-                    <div id="no-squat-result-area" style="text-align: center; display: none;"></div>
+                    <div id="no-squat-result-area" style="text-align: center; display: none;">
+                        <p>스쿼트 동작이 감지되지 않았습니다. 다른 영상으로 다시 시도해보세요.</p>
+                    </div>
                 </div>
-                <div class="result-actions">
+                
+                <div class="result-actions" style="margin-top: 20px;">
                     <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
                     <button id="resetBtn" class="button-secondary">새로운 영상 분석하기 🔄</button>
                 </div>
+                
+                <!-- 두 번째 광고 -->
                 <div class="ad-container" style="margin-top: 20px;">
-                    <ins class="adsbygoogle"
+                    <ins class="adsbygoogle ad-unit-2"
                          style="display:block"
                          data-ad-client="ca-pub-5382502021593566"
                          data-ad-slot="1234567890"
                          data-ad-format="auto"
                          data-full-width-responsive="true"></ins>
-                    <script>
-                        (adsbygoogle = window.adsbygoogle || []).push({});
-                    </script>
                 </div>
             </section>
         </main>
     </div>
     
-    <!-- 애드센스 초기화 스크립트 -->
+    <!-- 기본 스타일 추가 -->
+    <style>
+        .button-secondary {
+            margin-top: 10px;
+            background-color: #6c757d;
+            color: white;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .button-secondary:hover {
+            background-color: #5a6268;
+        }
+        
+        #coach-feedback-area {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        
+        #feedbackList {
+            list-style-type: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+        
+        #feedbackList li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        #feedbackList li:last-child {
+            border-bottom: none;
+        }
+        
+        .ad-container {
+            text-align: center;
+            min-height: 100px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+        }
+    </style>
+    
+    <!-- 애드센스 초기화 스크립트 개선 -->
     <script>
         // 페이지 로드 후 애드센스 초기화
         window.addEventListener('load', function() {
-            try {
-                (adsbygoogle = window.adsbygoogle || []).push({});
-            } catch (e) {
-                console.log('AdSense initialization error:', e);
-            }
+            // 약간의 지연 후 애드센스 초기화
+            setTimeout(function() {
+                try {
+                    // 각 광고 단위별로 개별 초기화
+                    const adUnits = document.querySelectorAll('.adsbygoogle');
+                    let initCount = 0;
+                    
+                    adUnits.forEach(function(adUnit, index) {
+                        // 이미 초기화된 광고는 건너뛰기
+                        if (!adUnit.getAttribute('data-adsbygoogle-status')) {
+                            setTimeout(function() {
+                                try {
+                                    (adsbygoogle = window.adsbygoogle || []).push({});
+                                    initCount++;
+                                    console.log(`AdSense unit ${index + 1} initialized`);
+                                } catch (e) {
+                                    console.log(`AdSense unit ${index + 1} initialization error:`, e);
+                                }
+                            }, index * 1000); // 각 광고마다 1초씩 지연
+                        }
+                    });
+                    
+                } catch (e) {
+                    console.log('AdSense global initialization error:', e);
+                }
+            }, 2000); // 페이지 로드 후 2초 지연
         });
+        
+        // 동적 광고 로딩 함수
+        function loadAdsenseAd(container) {
+            const adUnit = container.querySelector('.adsbygoogle');
+            if (adUnit && !adUnit.getAttribute('data-adsbygoogle-status')) {
+                try {
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                } catch (e) {
+                    console.log('Dynamic AdSense loading error:', e);
+                }
+            }
+        }
     </script>
     
     <script src="script.js" type="module"></script>

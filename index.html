@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5382502021593566" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <link rel="stylesheet" href="styles.css">
+    
+    <?!= include('styles'); ?>
+
 </head>
 <body>
     <div class="container">
@@ -27,14 +29,14 @@
 
             <section id="analysis-section" class="card" style="display: none;">
                 <h3>2. 영상 확인 및 분석</h3>
-                <div id="video">
+                <div id="videoContainer">
                     <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
                     <canvas id="output_canvas"></canvas>
                 </div>
                 <div class="controls">
                     <button id="startAnalysisBtn" class="button-primary">이 영상으로 분석 시작하기 🔬</button>
                 </div>
-                <div class="ad-" style="margin-top: 20px;">
+                <div class="ad-container" style="margin-top: 20px;">
                     <ins class="adsbygoogle"
                          style="display:block"
                          data-ad-client="ca-pub-5382502021593566"
@@ -46,22 +48,22 @@
 
             <section id="result-section" class="card" style="display: none;">
                 <h3>3. 최종 분석 결과 🏆</h3>
-                <div id="status" class="status-"></div>
+                <div id="status" class="status-container"></div>
                 <div id="results-display-area">
-                    <div id="story-canvas-">
+                    <div id="story-canvas-container">
                         <canvas id="story-canvas" style="width:100%; border-radius: 8px;"></canvas>
                     </div>
                     <div id="no-squat-result-area" style="text-align: center; display: none;"></div>
                 </div>
-                <h3>3. 최종 분석 결과 🏆</h3>
-                <div id="status" class="status-container"></div>
-                <div id="results-display-area">
-                    <div id="story-canvas-container"> 
-                        <canvas id="story-canvas" style="width:100%; border-radius: 8px;"></canvas>
-                    </div>
-                    <div id="no-squat-result-area" style="text-align: center; display: none;"></div></div>
+                
+                <div id="coach-feedback-area">
+                    <h3>AI 코치의 한마디 🤖</h3>
+                    <div id="feedbackList" class="feedback-item feedback-info"></div>
+                </div>
+                
                 <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
                 <button id="resetBtn" style="margin-top: 10px; background-color: var(--secondary-color); color: white; width: 100%;">새로운 영상 분석하기 🔄</button>
+                
                 <div class="ad-container" style="margin-top: 20px;">
                     <ins class="adsbygoogle"
                          style="display:block"
@@ -72,6 +74,8 @@
             </section>
         </main>
     </div>
-    <script src="script.js" type="module"></script>
+    
+    <?!= include('script'); ?>
+
 </body>
 </html>

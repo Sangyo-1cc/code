@@ -8,7 +8,7 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5382502021593566" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" xintegrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    <!-- [중요] Google Apps Script에서는 이 방식으로 CSS를 불러와야 합니다. -->
+    <!-- [핵심] Google Apps Script에서는 이 방식으로 CSS를 불러와야 합니다. -->
     <?!= include('styles'); ?>
 
 </head>
@@ -60,13 +60,13 @@
                     </div>
                     <div id="no-squat-result-area" style="text-align: center; display: none;"></div>
                 </div>
-                
+
                 <div id="coach-feedback-area">
                     <h3>AI 코치의 한마디 🤖</h3>
                     <div id="feedbackList" class="feedback-item feedback-info"></div>
                 </div>
                 
-                <div class="result-actions">
+                <div class="result-actions" style="margin-top: 20px;">
                     <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
                     <button id="resetBtn" class="button-secondary">새로운 영상 분석하기 🔄</button>
                 </div>
@@ -83,7 +83,7 @@
         </main>
     </div>
 
-    <!-- [중요] Google Apps Script에서는 이 방식으로 JS를 불러와야 합니다. -->
+    <!-- [핵심] Google Apps Script에서는 이 방식으로 JS를 불러와야 합니다. -->
     <?!= include('script'); ?>
 
 </body>

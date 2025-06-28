@@ -5,10 +5,10 @@
     <base target="_top">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
-
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
     <div class="container">
@@ -31,44 +31,42 @@
             <section id="analysis-section" class="card" style="display: none;">
                 <h3>2. 영상 확인 및 분석</h3>
                 <div id="videoContainer">
-                    <video id="videoPlayer" controls></video>
+                    <video id="analysisVideo" playsinline style="display:none;"></video>
+                    <canvas id="output_canvas" class="output-canvas"></canvas>
                 </div>
+                <div id="status" class="status-container"></div>
                 <div class="controls">
                     <button id="startAnalysisBtn" class="button-primary">이 영상으로 분석 시작하기 🔬</button>
                 </div>
-                <div class="ad-container" style="margin-top: 20px;">
-                    <ins class="adsbygoogle"
-                         style="display:block"
-                         data-ad-client="ca-pub-YOUR_ADSENSE_ID"
-                         data-ad-slot="YOUR_AD_SLOT_ID"
-                         data-ad-format="auto"
-                         data-full-width-responsive="true"></ins>
-                    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+                <div class="ad-container">
+                    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="YOUR_AD_SLOT_ID" data-ad-format="auto" data-full-width-responsive="true"></ins>
                 </div>
             </section>
 
             <section id="result-section" class="card" style="display: none;">
                 <h3>3. 최종 분석 결과 🏆</h3>
-                <div id="status" class="status-container"></div>
-                <div id="result-capture-area">
-                    <canvas id="resultCanvas" width="400" height="300"></canvas>
-                    <h4>AI 코치의 한마디 🤖</h4>
-                    <p id="ai-feedback"></p>
+
+                <div id="story-canvas-container" style="background-color: #eee; padding:10px; border-radius: 8px;">
+                     <canvas id="story-canvas" width="400" height="711"></canvas>
                 </div>
+                
+                <div id="coach-feedback-area">
+                    <h4>AI 코치의 한마디 🤖</h4>
+                    <div id="feedbackList"></div> </div>
+                
+                <div id="no-squat-result-area" style="display: none;">
+                    </div>
+                
                 <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
                 <button id="resetBtn" style="margin-top: 10px; background-color: var(--secondary-color); color: white; width: 100%;">새로운 영상 분석하기 🔄</button>
-                <div class="ad-container" style="margin-top: 20px;">
-                    <ins class="adsbygoogle"
-                         style="display:block"
-                         data-ad-client="ca-pub-YOUR_ADSENSE_ID"
-                         data-ad-slot="YOUR_AD_SLOT_ID_2"
-                         data-ad-format="auto"
-                         data-full-width-responsive="true"></ins>
-                    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+                
+                <div class="ad-container">
+                    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="YOUR_AD_SLOT_ID_2" data-ad-format="auto" data-full-width-responsive="true"></ins>
                 </div>
             </section>
         </main>
     </div>
-    <script src="script.js"></script>
+    
+    <script type="module" src="script.js"></script>
 </body>
 </html>

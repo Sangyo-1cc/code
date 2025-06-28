@@ -1,90 +1,56 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <base target="_top"> <meta charset="UTF-8">
     <base target="_top">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 외부 라이브러리 스크립트 -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5382502021593566" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" xintegrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-    <!-- [핵심] Google Apps Script에서는 이 방식으로 CSS를 불러와야 합니다. -->
-    <?!= include('styles'); ?>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1>AI 스쿼트 코치 🏋️‍♀️</h1>
-            <p class="subtitle">당신의 스쿼트 자세를 분석하고 기록해 보세요</p>
-        </header>
-        <main>
-            <!-- 1. 영상 업로드 섹션 -->
-            <section id="upload-section" class="card">
-                <h3>1. 영상 업로드</h3>
-                <div class="controls">
-                    <label for="videoUpload" class="file-label">여기를 눌러 영상 선택 📂</label>
-                    <input type="file" id="videoUpload" accept="video/*" style="display:none;">
-                </div>
+@@ -19,8 +21,10 @@ <h3>1. 영상 업로드</h3>
+<label for="videoUpload" class="file-label">여기를 눌러 영상 선택 📂</label>
+<input type="file" id="videoUpload" accept="video/*" style="display:none;">
+</div>
+                <div id="initial-status" style="text-align:center; margin-top:20px;"></div>
                 <div id="initial-status" style="text-align:center; margin-top:20px;">AI 모델을 로딩 중입니다...</div>
                 <p class="privacy-note">**개인 정보 보호:** 업로드하신 영상은 사용자 기기에서만 분석되며, **어떠한 영상도 서버에 저장되지 않습니다.**</p>
-            </section>
+</section>
 
-            <!-- 2. 분석 섹션 -->
-            <section id="analysis-section" class="card" style="display: none;">
-                <h3>2. 영상 확인 및 분석</h3>
-                <div id="videoContainer">
-                    <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
-                    <canvas id="output_canvas"></canvas>
-                </div>
-                <div class="controls">
-                    <button id="startAnalysisBtn" class="button-primary">이 영상으로 분석 시작하기 🔬</button>
-                </div>
+<section id="analysis-section" class="card" style="display: none;">
+<h3>2. 영상 확인 및 분석</h3>
+<div id="videoContainer">
+@@ -30,7 +34,17 @@ <h3>2. 영상 확인 및 분석</h3>
+<div class="controls">
+<button id="startAnalysisBtn" class="button-primary">이 영상으로 분석 시작하기 🔬</button>
+</div>
                 <div class="ad-container" style="margin-top: 20px;">
                     <ins class="adsbygoogle"
                          style="display:block"
-                         data-ad-client="ca-pub-5382502021593566"
-                         data-ad-slot="8453146528"
+                         data-ad-client="ca-pub-YOUR_ADSENSE_ID"
+                         data-ad-slot="YOUR_AD_SLOT_ID"
                          data-ad-format="auto"
                          data-full-width-responsive="true"></ins>
+                    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
                 </div>
-            </section>
+</section>
 
-            <!-- 3. 결과 섹션 -->
-            <section id="result-section" class="card" style="display: none;">
-                <h3>3. 최종 분석 결과 🏆</h3>
-                <div id="status" class="status-container"></div>
-                <div id="results-display-area">
-                    <div id="story-canvas-container">
-                        <canvas id="story-canvas" style="width:100%; border-radius: 8px;"></canvas>
-                    </div>
-                    <div id="no-squat-result-area" style="text-align: center; display: none;"></div>
-                </div>
-
-                <div id="coach-feedback-area">
-                    <h3>AI 코치의 한마디 🤖</h3>
-                    <div id="feedbackList" class="feedback-item feedback-info"></div>
-                </div>
-                
-                <div class="result-actions" style="margin-top: 20px;">
-                    <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
-                    <button id="resetBtn" class="button-secondary">새로운 영상 분석하기 🔄</button>
-                </div>
-                
+<section id="result-section" class="card" style="display: none;">
+<h3>3. 최종 분석 결과 🏆</h3>
+<div id="status" class="status-container"></div>
+@@ -46,6 +60,14 @@ <h3>AI 코치의 한마디 🤖</h3>
+</div>
+<button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
+<button id="resetBtn" style="margin-top: 10px; background-color: var(--secondary-color); color: white; width: 100%;">새로운 영상 분석하기 🔄</button>
                 <div class="ad-container" style="margin-top: 20px;">
                     <ins class="adsbygoogle"
                          style="display:block"
-                         data-ad-client="ca-pub-5382502021593566"
-                         data-ad-slot="1234567890" <!-- ⚠️ 여기에 실제 두 번째 광고 슬롯 ID를 입력하세요! -->
-                         data-ad-format="auto"
+                         data-ad-client="ca-pub-YOUR_ADSENSE_ID"
+                         data-ad-slot="YOUR_AD_SLOT_ID_2" data-ad-format="auto"
                          data-full-width-responsive="true"></ins>
+                    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
                 </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- [핵심] Google Apps Script에서는 이 방식으로 JS를 불러와야 합니다. -->
-    <?!= include('script'); ?>
-
-</body>
-</html>
+</section>
+</main>
+</div>

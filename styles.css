@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+
 :root {
     --primary-color: #0d6efd;
     --secondary-color: #6c757d;
@@ -15,69 +16,234 @@
     --info-border: #bbdefb;
     --info-text: #0d47a1;
 }
-body { margin: 0; font-family: var(--font-family); background-color: var(--background-color); color: var(--text-color); line-height: 1.6; }
-.container { max-width: 600px; margin: 0 auto; padding: 15px; }
-header { text-align: center; margin-bottom: 25px; }
-h1 { margin-bottom: 0.5rem; color: #000; }
-.subtitle { color: var(--light-text-color); margin-top: 0; font-size: 1.1em;}
-.card { background: var(--card-bg-color); border-radius: 16px; padding: 20px 25px; margin-bottom: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
-h3 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; font-size: 1.25em; }
-#videoContainer { position: relative; width: 100%; margin: 0 auto; background-color: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9; }
-#output_canvas { display: block; width: 100%; height: 100%; }
-.controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-.file-label { display: block; border: 2px dashed var(--border-color); border-radius: 8px; padding: 40px 20px; width: 100%; text-align: center; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; font-weight: bold; color: var(--primary-color); }
-.file-label:hover { background-color: #e9ecef; border-color: var(--primary-color); }
 
-/* UI/UX 개선: 버튼 스타일 강화 */
-button {
-    padding: 15px 25px; /* 패딩 확대 */
-    border: none;
-    border-radius: 10px; /* 모서리 더 둥글게 */
+body {
+    margin: 0;
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+h1 {
+    margin-bottom: 0.5rem;
+    color: #000;
+    font-size: 2em; /* [개선] 제목을 더 돋보이게 */
+}
+
+h3 {
+    margin-top: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    font-size: 1.25em;
+}
+
+.card {
+    background: var(--card-bg-color);
+    border-radius: 16px;
+    padding: 20px 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
+}
+
+/* --- 영상 및 캔버스 영역 --- */
+#videoContainer {
+    position: relative;
+    width: 100%;
+    margin: 0 auto;
+    background-color: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+}
+
+/* [추가] 비디오와 캔버스가 완벽히 겹치도록 스타일 추가 */
+#analysisVideo, #output_canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* --- 컨트롤 및 버튼 --- */
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.file-label {
+    display: block;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
     cursor: pointer;
-    font-size: 1.1em; /* 글자 크기 확대 */
+    transition: background-color 0.2s, border-color 0.2s;
     font-weight: bold;
-    transition: background-color 0.2s, transform 0.1s, opacity 0.2s; /* 호버/클릭 전환 효과 추가 */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* 그림자 추가 */
+    color: var(--primary-color);
 }
+
+.file-label:hover {
+    background-color: #e9ecef;
+    border-color: var(--primary-color);
+}
+
+button {
+    padding: 15px 25px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
 button:hover {
-    opacity: 0.9;
-    background-color: var(--primary-color); /* 호버 시 색상 변화 */
+    transform: translateY(-2px); /* [개선] 살짝 떠오르는 효과 */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
 }
-button:active { transform: scale(0.98); }
-button:disabled { background-color: #e9ecef; color: #adb5bd; cursor: not-allowed; opacity: 0.7; box-shadow: none; } /* 비활성화 상태 스타일 */
 
-.button-primary { background-color: var(--success-color); color: white; width: 100%; }
-#coach-feedback-area { margin-top: 25px; }
-.feedback-item { padding: 15px; margin-bottom: 5px; border-radius: 8px; font-size: 1.1em; text-align: center; }
-.feedback-info { background-color: var(--info-bg); border: 1px solid var(--info-border); color: var(--info-text); }
-.feedback-good { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; } /* 새로운 피드백 스타일 */
-.feedback-warning { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; } /* 새로운 피드백 스타일 */
-.feedback-bad { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; } /* 새로운 피드백 스타일 */
+button:active {
+    transform: scale(0.98);
+}
 
-.status-container { text-align: center; font-weight: bold; margin-bottom: 20px; }
-.loading { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 5px; vertical-align: middle; }
-@keyframes spin { to { transform: rotate(360deg); } }
+button:disabled {
+    background-color: #e9ecef;
+    color: #adb5bd;
+    cursor: not-allowed;
+    opacity: 0.7;
+    box-shadow: none;
+    transform: none;
+}
 
-/* UI/UX 개선: 개인 정보 보호 문구 스타일 */
+.button-primary {
+    background-color: var(--success-color);
+    color: white;
+    width: 100%;
+}
+
+/* [개선] 버튼 종류별 호버 색상 명확화 */
+.button-primary:hover {
+    background-color: #157347;
+}
+
+/* --- 피드백 및 결과 영역 --- */
+#coach-feedback-area {
+    margin-top: 25px;
+    margin-bottom: 25px;
+}
+
+/* [추가] 새로운 결과 요소들 스타일링 */
+#story-canvas-container {
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 8px;
+    background: #fff;
+    margin-bottom: 20px;
+}
+
+#story-canvas {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+#no-squat-result-area {
+    padding: 20px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+    border-radius: 8px;
+    text-align: center;
+}
+
+/* [개선] 피드백 메시지 박스 스타일 */
+#feedbackList div {
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+}
+
+.feedback-good {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.feedback-warning {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    color: #856404;
+}
+
+.feedback-info {
+    background-color: var(--info-bg);
+    border-color: var(--info-border);
+    color: var(--info-text);
+}
+
+
+/* --- 기타 UI 요소 --- */
+.status-container {
+    text-align: center;
+    font-weight: bold;
+    margin: 20px 0; /* [개선] 상하 마진 추가 */
+}
+
+.loading {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 .privacy-note {
     font-size: 0.85em;
     color: var(--light-text-color);
     text-align: center;
     margin-top: 25px;
     padding: 10px;
-    background-color: #f0f0f0;
+    background-color: #f8f9fa;
     border-radius: 8px;
-    border: 1px solid #e0e0e0;
 }
 
-/* styles.css 파일 */
-
 .ad-container {
-    display: block; /* 광고 컨테이너는 항상 block으로 유지 */
-    width: 100%; /* 너비를 100%로 명시적으로 지정 */
-    text-align: center;
-    min-height: 50px; 
-    background-color: #e9e9e9; 
-    border-radius: 8px;
-    overflow: hidden; 
+    display: block;
+    width: 100%;
+    text-align: center;
+    min-height: 50px;
+    background-color: #e9e9e9;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 20px;
 }

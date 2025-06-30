@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <base target="_top"> <meta charset="UTF-8">
+    <base target="_top">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <link rel="stylesheet" href="styles.css">
+    
+    <style>
+      <?!= include('styles.css'); ?>
+    </style>
 </head>
 <body>
     <div class="container">
@@ -12,43 +16,92 @@
             <h1>AI 스쿼트 코치 🏋️‍♀️</h1>
             <p class="subtitle">당신의 스쿼트 자세를 분석하고 기록해 보세요</p>
         </header>
+        
         <main>
+            <!-- 1단계: 영상 업로드 -->
             <section id="upload-section" class="card">
                 <h3>1. 영상 업로드</h3>
-                <div class="controls">
-                    <label for="videoUpload" class="file-label">여기를 눌러 영상 선택 📂</label>
+                <div class="upload-area">
+                    <label for="videoUpload" class="file-label">
+                        <div class="upload-icon">📂</div>
+                        <div class="upload-text">
+                            <strong>여기를 눌러 영상 선택</strong>
+                            <small>MP4, MOV, AVI 등 지원</small>
+                        </div>
+                    </label>
                     <input type="file" id="videoUpload" accept="video/*" style="display:none;">
                 </div>
-                <div id="initial-status" style="text-align:center; margin-top:20px;"></div>
+                <div id="initial-status" class="status-message"></div>
             </section>
+            
+            <!-- 2단계: 영상 확인 및 분석 -->
             <section id="analysis-section" class="card" style="display: none;">
                 <h3>2. 영상 확인 및 분석</h3>
-                <div id="videoContainer">
-                    <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
-                    <canvas id="output_canvas"></canvas>
+                <div class="video-preview">
+                    <div id="videoContainer">
+                        <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
+                        <canvas id="output_canvas"></canvas>
+                        
+                        <!-- 광고 오버레이 (더 자연스럽게 통합) -->
+                        <div id="ad-overlay" style="display: none;">
+                            <div class="ad-content">
+                                <div class="ad-icon">🎯</div>
+                                <h2>분석 준비 중...</h2>
+                                <p>AI가 당신의 스쿼트를 분석하고 있어요!</p>
+                                <div class="loading"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="controls">
-                    <button id="startAnalysisBtn" class="button-primary">이 영상으로 분석 시작하기 🔬</button>
+                
+                <div class="analysis-controls">
+                    <button id="startAnalysisBtn" class="button-primary">
+                        <span class="btn-icon">🔬</span>
+                        <span class="btn-text">이 영상으로 분석 시작하기</span>
+                    </button>
+                    <p class="analysis-tip">💡 팁: 측면에서 촬영된 영상이 더 정확한 분석을 제공합니다</p>
                 </div>
             </section>
+            
+            <!-- 3단계: 최종 분석 결과 -->
             <section id="result-section" class="card" style="display: none;">
                 <h3>3. 최종 분석 결과 🏆</h3>
+                
                 <div id="status" class="status-container"></div>
+                
                 <div id="results-display-area">
-                    <div id="story-canvas-container">
+                    <div id="story-canvas-container" class="result-canvas">
                         <canvas id="story-canvas" style="width:100%; border-radius: 8px;"></canvas>
                     </div>
-                    <div id="no-squat-result-area" style="text-align: center; display: none;"></div>
+                    <div id="no-squat-result-area" class="no-result" style="display: none;">
+                        <div class="no-result-icon">🤖</div>
+                        <h2>분석 실패!</h2>
+                        <p>유효한 스쿼트 동작을 인식하지 못했습니다.</p>
+                        <p class="help-text">자세나 영상 각도를 확인 후 다시 시도해보세요.</p>
+                    </div>
                 </div>
-                <div id="coach-feedback-area">
+                
+                <div id="coach-feedback-area" class="feedback-section">
                     <h3>AI 코치의 한마디 🤖</h3>
                     <div id="feedbackList" class="feedback-item feedback-info"></div>
                 </div>
-                <button id="shareStoryBtn" class="button-primary">📸 결과 이미지 다운로드</button>
-                <button id="resetBtn" style="margin-top: 10px; background-color: var(--secondary-color); color: white; width: 100%;">새로운 영상 분석하기 🔄</button>
+                
+                <div class="result-actions">
+                    <button id="shareStoryBtn" class="button-primary">
+                        <span class="btn-icon">📸</span>
+                        <span class="btn-text">결과 이미지 다운로드</span>
+                    </button>
+                    <button id="resetBtn" class="button-secondary">
+                        <span class="btn-icon">🔄</span>
+                        <span class="btn-text">새로운 영상 분석하기</span>
+                    </button>
+                </div>
             </section>
         </main>
     </div>
-    <script src="script.js" type="module"></script>
+    
+    <script>
+      <?!= include('script.js'); ?>
+    </script>
 </body>
 </html>

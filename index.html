@@ -1,14 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    
-    <style>
-      <?!= include('styles.css'); ?>
-    </style>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <title>AI 스쿼트 코치</title>
 </head>
 <body>
     <div class="container">
@@ -16,7 +13,6 @@
             <h1>AI 스쿼트 코치 🏋️‍♀️</h1>
             <p class="subtitle">당신의 스쿼트 자세를 분석하고 기록해 보세요</p>
         </header>
-        
         <main>
             <!-- 1단계: 영상 업로드 -->
             <section id="upload-section" class="card">
@@ -33,7 +29,6 @@
                 </div>
                 <div id="initial-status" class="status-message"></div>
             </section>
-            
             <!-- 2단계: 영상 확인 및 분석 -->
             <section id="analysis-section" class="card" style="display: none;">
                 <h3>2. 영상 확인 및 분석</h3>
@@ -41,7 +36,6 @@
                     <div id="videoContainer">
                         <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
                         <canvas id="output_canvas"></canvas>
-                        
                         <!-- 광고 오버레이 (더 자연스럽게 통합) -->
                         <div id="ad-overlay" style="display: none;">
                             <div class="ad-content">
@@ -53,7 +47,6 @@
                         </div>
                     </div>
                 </div>
-                
                 <div class="analysis-controls">
                     <button id="startAnalysisBtn" class="button-primary">
                         <span class="btn-icon">🔬</span>
@@ -62,13 +55,10 @@
                     <p class="analysis-tip">💡 팁: 측면에서 촬영된 영상이 더 정확한 분석을 제공합니다</p>
                 </div>
             </section>
-            
             <!-- 3단계: 최종 분석 결과 -->
             <section id="result-section" class="card" style="display: none;">
                 <h3>3. 최종 분석 결과 🏆</h3>
-                
                 <div id="status" class="status-container"></div>
-                
                 <div id="results-display-area">
                     <div id="story-canvas-container" class="result-canvas">
                         <canvas id="story-canvas" style="width:100%; border-radius: 8px;"></canvas>
@@ -80,12 +70,10 @@
                         <p class="help-text">자세나 영상 각도를 확인 후 다시 시도해보세요.</p>
                     </div>
                 </div>
-                
                 <div id="coach-feedback-area" class="feedback-section">
                     <h3>AI 코치의 한마디 🤖</h3>
                     <div id="feedbackList" class="feedback-item feedback-info"></div>
                 </div>
-                
                 <div class="result-actions">
                     <button id="shareStoryBtn" class="button-primary">
                         <span class="btn-icon">📸</span>
@@ -99,9 +87,6 @@
             </section>
         </main>
     </div>
-    
-    <script>
-      <?!= include('script.js'); ?>
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>

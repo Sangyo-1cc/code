@@ -421,9 +421,6 @@ function handleVideoUpload(event) {
     const fileURL = URL.createObjectURL(file);
     video.src = fileURL;
     video.play();
-    
-    // 업로드 후 input 초기화
-    videoUpload.value = '';
 }
 
 function setupVideoDisplay() {

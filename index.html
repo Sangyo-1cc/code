@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <base target="_top"> <meta charset="UTF-8">
+    <base target="_top">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <link rel="stylesheet" href="styles.css">
+    
+    <style>
+      <?!= include('styles.css'); ?>
+    </style>
 </head>
 <body>
     <div class="container">
@@ -21,16 +25,26 @@
                 </div>
                 <div id="initial-status" style="text-align:center; margin-top:20px;"></div>
             </section>
+            
             <section id="analysis-section" class="card" style="display: none;">
                 <h3>2. 영상 확인 및 분석</h3>
                 <div id="videoContainer">
                     <video id="analysisVideo" style="display: none;" playsinline muted loop></video>
                     <canvas id="output_canvas"></canvas>
+                    
+                    <div id="ad-overlay" style="display: none;">
+                        <div class="ad-content">
+                            <h2>놀라운 스쿼트 분석 결과가<br>잠시 후에 공개됩니다!</h2>
+                            <p style="margin-top: 20px;">(광고가 표시되는 영역입니다)</p>
+                            <div class="loading"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="controls">
                     <button id="startAnalysisBtn" class="button-primary">이 영상으로 분석 시작하기 🔬</button>
                 </div>
             </section>
+            
             <section id="result-section" class="card" style="display: none;">
                 <h3>3. 최종 분석 결과 🏆</h3>
                 <div id="status" class="status-container"></div>
@@ -49,6 +63,9 @@
             </section>
         </main>
     </div>
-    <script src="script.js" type="module"></script>
+    
+    <script>
+      <?!= include('script.js'); ?>
+    </script>
 </body>
 </html>

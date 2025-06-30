@@ -535,6 +535,7 @@ function handleVideoUpload(event) {
     const fileURL = URL.createObjectURL(file);
     video.src = fileURL;
     video.play();
+    videoUpload.value = '';
 }
 
 function setupVideoDisplay() {
@@ -643,3 +644,9 @@ shareStoryBtn?.addEventListener('click', (event) => { event.preventDefault();
         link.click();
     }
 });
+
+// [개선점1] 파일 업로드 라벨 클릭 시 input 트리거
+const fileLabel = document.querySelector('.file-label');
+if (fileLabel && videoUpload) {
+    fileLabel.addEventListener('click', () => videoUpload.click());
+}

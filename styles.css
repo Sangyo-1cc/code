@@ -1,455 +1,966 @@
-/* CSS 변수 정의 */
-:root {
-    --primary-color: #FF6B6B;
-    --secondary-color: #4ECDC4;
-    --dark-bg: #1a1a1a;
-    --light-text: #ffffff;
-    --gray-text: #a0a0a0;
-    --success: #51cf66;
-    --warning: #ff9f40;
-    --danger: #ff6b6b;
-    --card-bg: #2a2a2a;
-    --border-color: #3a3a3a;
+// 전역 변수
+let pose = null;
+let uploadedVideo = null;
+let analyzeResults = {
+    scores: {
+        depth: 0,
+        posture: 0,
+        balance: 0,
+        speed: 0,
+        overall: 0
+    },
+    feedback: []
+};
+let frameAnalysisData = [];
+let isAnalyzing = false;
+let poseInitialized = false;
+
+// 디버그 모드
+const DEBUG_MODE = true;
+const log = (message, data = null) => {
+    if (DEBUG_MODE) {
+        const timestamp = new Date().toTimeString().split(' ')[0];
+        console.log(`[${timestamp}] [AI Squat] ${message}`, data || '');
+        updateDebugPanel(`${timestamp} - ${message}`);
+    }
+};
+
+// 디버그 패널 업데이트
+function updateDebugPanel(message) {
+    const panel = document.getElementById('debugPanel');
+    if (DEBUG_MODE && panel) {
+        panel.classList.add('show');
+        panel.innerHTML = message + '<br>' + panel.innerHTML;
+        const lines = panel.innerHTML.split('<br>');
+        if (lines.length > 10) {
+            panel.innerHTML = lines.slice(0, 10).join('<br>');
+        }
+    }
 }
 
-/* 기본 스타일 리셋 */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+// MediaPipe Pose 초기화
+async function initializePose() {
+    if (poseInitialized) {
+        log('Pose 이미 초기화됨');
+        return true;
+    }
+
+    log('Pose 초기화 시작');
+    
+    try {
+        // Pose 인스턴스 생성
+        pose = new Pose({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+            }
+        });
+
+        // 옵션 설정
+        pose.setOptions({
+            modelComplexity: 1,
+            smoothLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        // 결과 콜백 설정
+        pose.onResults(onPoseResults);
+        
+        poseInitialized = true;
+        log('Pose 초기화 완료');
+        return true;
+        
+    } catch (error) {
+        console.error('[AI Squat] Pose 초기화 실패:', error);
+        poseInitialized = false;
+        return false;
+    }
 }
 
-/* 바디 스타일 */
-body {
-    font-family: 'Noto Sans KR', sans-serif;
-    background-color: var(--dark-bg);
-    color: var(--light-text);
-    overflow-x: hidden;
-    min-height: 100vh;
-    position: relative;
-}
+// 파일 업로드 이벤트 초기화
+function initializeUpload() {
+    const videoInput = document.getElementById('videoInput');
+    const uploadArea = document.getElementById('uploadArea');
+    
+    if (uploadArea) {
+        uploadArea.addEventListener('click', () => {
+            videoInput.click();
+        });
+        
+        // 드래그 앤 드롭
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
 
-/* 모바일 최적화 컨테이너 */
-.app-container {
-    max-width: 100%;
-    margin: 0 auto;
-    padding: 20px 15px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
 
-/* 헤더 */
-.header {
-    text-align: center;
-    margin-bottom: 30px;
-    animation: fadeInDown 0.8s ease;
-}
-
-.header h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 10px;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.header p {
-    color: var(--gray-text);
-    font-size: 0.9rem;
-}
-
-/* 단계 표시기 */
-.step-indicator {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 30px;
-    gap: 10px;
-}
-
-.step {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--card-bg);
-    border: 2px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.step.active {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-    transform: scale(1.1);
-}
-
-.step.completed {
-    background: var(--success);
-    border-color: var(--success);
-}
-
-/* 카드 스타일 */
-.card {
-    background: var(--card-bg);
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    transition: transform 0.3s ease;
-}
-
-/* 업로드 섹션 */
-.upload-section {
-    text-align: center;
-}
-
-.upload-section h2 {
-    margin-bottom: 10px;
-}
-
-.text-muted {
-    color: var(--gray-text);
-    font-size: 0.9rem;
-}
-
-.upload-area {
-    border: 2px dashed var(--primary-color);
-    border-radius: 15px;
-    padding: 40px 20px;
-    margin: 20px 0;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: rgba(255, 107, 107, 0.05);
-}
-
-.upload-area:hover {
-    background: rgba(255, 107, 107, 0.1);
-    transform: scale(1.02);
-}
-
-.upload-area.dragover {
-    background: rgba(255, 107, 107, 0.2);
-    border-color: var(--secondary-color);
-}
-
-.upload-icon {
-    font-size: 3rem;
-    margin-bottom: 15px;
-}
-
-/* 비디오 프리뷰 */
-.video-container {
-    position: relative;
-    margin: 20px 0;
-    border-radius: 15px;
-    overflow: hidden;
-    background: #000;
-    max-height: 50vh;
-}
-
-video, canvas {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-
-/* 버튼 스타일 */
-.btn {
-    padding: 15px 30px;
-    border: none;
-    border-radius: 30px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    min-width: 150px;
-    text-transform: none;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
-}
-
-.btn-secondary {
-    background: var(--card-bg);
-    color: var(--light-text);
-    border: 2px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* 분석 중 상태 */
-.analyzing {
-    text-align: center;
-    padding: 40px 20px;
-}
-
-.spinner {
-    width: 60px;
-    height: 60px;
-    border: 4px solid var(--border-color);
-    border-top: 4px solid var(--primary-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* 결과 섹션 */
-.results-section {
-    animation: fadeIn 0.8s ease;
-}
-
-.score-card {
-    text-align: center;
-    padding: 30px 20px;
-    background: linear-gradient(135deg, var(--card-bg), rgba(255, 107, 107, 0.1));
-    border-radius: 20px;
-    margin-bottom: 20px;
-}
-
-.score-display {
-    font-size: 4rem;
-    font-weight: 700;
-    line-height: 1;
-    margin-bottom: 10px;
-}
-
-.score-label {
-    color: var(--gray-text);
-    font-size: 1.1rem;
-    margin-bottom: 20px;
-}
-
-.score-meter {
-    width: 200px;
-    height: 200px;
-    margin: 0 auto 20px;
-    position: relative;
-}
-
-.score-ring {
-    width: 100%;
-    height: 100%;
-    transform: rotate(-90deg);
-}
-
-.score-ring circle {
-    fill: none;
-    stroke-width: 15;
-}
-
-.score-ring .bg {
-    stroke: var(--border-color);
-}
-
-.score-ring .progress {
-    stroke: var(--primary-color);
-    stroke-linecap: round;
-    transition: stroke-dashoffset 1.5s ease;
-}
-
-.score-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-/* 피드백 카드 */
-.feedback-card {
-    background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(255, 107, 107, 0.1));
-    padding: 20px;
-    border-radius: 15px;
-    margin-bottom: 15px;
-    border-left: 4px solid var(--secondary-color);
-}
-
-.feedback-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.feedback-content {
-    color: var(--gray-text);
-    line-height: 1.6;
-}
-
-/* 개선된 점수 시스템 UI */
-.score-breakdown {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-    margin: 20px 0;
-}
-
-.score-item {
-    background: var(--card-bg);
-    padding: 15px;
-    border-radius: 10px;
-    text-align: center;
-}
-
-.score-item-label {
-    font-size: 0.9rem;
-    color: var(--gray-text);
-    margin-bottom: 5px;
-}
-
-.score-item-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--light-text);
-}
-
-/* 애니메이션 */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeInDown {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* 로딩 바 */
-.progress-bar {
-    width: 100%;
-    height: 6px;
-    background: var(--border-color);
-    border-radius: 3px;
-    overflow: hidden;
-    margin: 20px 0;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-    width: 0%;
-    transition: width 0.3s ease;
-    animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-    0% { opacity: 0.8; }
-    50% { opacity: 1; }
-    100% { opacity: 0.8; }
-}
-
-/* 디버그 패널 */
-.debug-panel {
-    position: fixed;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.9);
-    padding: 10px;
-    border-radius: 5px;
-    font-size: 0.8rem;
-    font-family: monospace;
-    max-width: 300px;
-    display: none;
-    z-index: 1000;
-    color: #0f0;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.debug-panel.show {
-    display: block;
-}
-
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-    .header h1 {
-        font-size: 1.75rem;
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('video/')) {
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(files[0]);
+                videoInput.files = dataTransfer.files;
+                handleFileUpload({ target: { files: files } });
+            }
+        });
     }
     
-    .score-display {
-        font-size: 3rem;
+    if (videoInput) {
+        videoInput.addEventListener('change', handleFileUpload);
+    }
+}
+
+// 파일 업로드 처리
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    log('파일 업로드 시도', { 
+        fileName: file?.name, 
+        fileSize: file ? `${(file.size / 1024 / 1024).toFixed(2)}MB` : 'N/A', 
+        fileType: file?.type 
+    });
+    
+    if (!file || !file.type.startsWith('video/')) {
+        console.error('[AI Squat] 잘못된 파일 형식:', file?.type);
+        alert('비디오 파일을 선택해주세요.');
+        return;
+    }
+
+    const videoPreview = document.getElementById('videoPreview');
+    const video = document.getElementById('uploadedVideo');
+    
+    if (!video) {
+        console.error('[AI Squat] 비디오 엘리먼트를 찾을 수 없습니다');
+        return;
     }
     
-    .score-meter {
-        width: 150px;
-        height: 150px;
+    // 기존 비디오 URL 정리
+    if (video.src && video.src.startsWith('blob:')) {
+        URL.revokeObjectURL(video.src);
     }
     
-    .btn {
-        padding: 12px 25px;
-        font-size: 0.95rem;
-        min-width: 130px;
+    const videoURL = URL.createObjectURL(file);
+    video.src = videoURL;
+    
+    if (videoPreview) {
+        videoPreview.style.display = 'block';
     }
     
-    .score-breakdown {
-        grid-template-columns: 1fr;
+    video.onloadedmetadata = () => {
+        log('비디오 메타데이터 로드 완료', {
+            duration: `${video.duration.toFixed(1)}초`,
+            resolution: `${video.videoWidth}x${video.videoHeight}`,
+            readyState: video.readyState
+        });
+        
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+            analyzeBtn.disabled = false;
+        }
+        updateStep(1);
+    };
+    
+    video.onerror = (e) => {
+        console.error('[AI Squat] 비디오 로드 실패:', e);
+        alert('비디오 파일을 읽을 수 없습니다. 다른 파일을 선택해주세요.');
+    };
+}
+
+// 분석 시작
+async function startAnalysis() {
+    if (isAnalyzing) {
+        log('이미 분석 중입니다');
+        return;
     }
     
-    .upload-area {
-        padding: 30px 15px;
+    uploadedVideo = document.getElementById('uploadedVideo');
+    if (!uploadedVideo || !uploadedVideo.src) {
+        alert('비디오를 먼저 업로드해주세요.');
+        return;
+    }
+    
+    isAnalyzing = true;
+    log('=== 분석 시작 ===');
+    
+    try {
+        // UI 전환
+        document.getElementById('uploadSection').style.display = 'none';
+        document.getElementById('analyzingSection').style.display = 'block';
+        updateStep(2);
+
+        // 캔버스 설정
+        const canvas = document.getElementById('outputCanvas');
+        const canvasCtx = canvas.getContext('2d');
+        
+        // 비디오 준비 확인
+        if (uploadedVideo.readyState < 2) {
+            log('비디오 로딩 대기 중...');
+            await new Promise((resolve) => {
+                uploadedVideo.addEventListener('loadeddata', resolve, { once: true });
+            });
+        }
+        
+        canvas.width = uploadedVideo.videoWidth;
+        canvas.height = uploadedVideo.videoHeight;
+        log('캔버스 설정 완료', { 
+            width: canvas.width, 
+            height: canvas.height
+        });
+
+        // Pose 초기화 확인
+        if (!poseInitialized || !pose) {
+            log('Pose 재초기화 필요');
+            const initialized = await initializePose();
+            if (!initialized) {
+                throw new Error('Pose 초기화 실패');
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // 분석 데이터 초기화
+        frameAnalysisData = [];
+        const fps = 2; // 초당 2프레임
+        const totalFrames = Math.floor(uploadedVideo.duration * fps);
+        let processedFrames = 0;
+
+        log('분석 파라미터', {
+            총시간: `${uploadedVideo.duration.toFixed(1)}초`,
+            FPS: fps,
+            총프레임: totalFrames
+        });
+
+        // 상태 업데이트
+        const analysisStatus = document.getElementById('analysisStatus');
+        const frameInfo = document.getElementById('frameInfo');
+        const progressFill = document.getElementById('progressFill');
+        
+        if (analysisStatus) {
+            analysisStatus.textContent = '포즈 인식을 시작합니다...';
+        }
+
+        // 비디오 분석 루프
+        for (let i = 0; i < totalFrames; i++) {
+            const currentTime = i / fps;
+            
+            if (currentTime >= uploadedVideo.duration) {
+                break;
+            }
+            
+            try {
+                // 비디오 시간 설정
+                await new Promise((resolve) => {
+                    uploadedVideo.currentTime = currentTime;
+                    
+                    const seekHandler = () => {
+                        uploadedVideo.removeEventListener('seeked', seekHandler);
+                        resolve();
+                    };
+                    
+                    uploadedVideo.addEventListener('seeked', seekHandler);
+                    
+                    setTimeout(() => {
+                        uploadedVideo.removeEventListener('seeked', seekHandler);
+                        resolve();
+                    }, 1000);
+                });
+                
+                // 캔버스에 그리기
+                canvasCtx.drawImage(uploadedVideo, 0, 0, canvas.width, canvas.height);
+                
+                // Pose 분석
+                if (pose && pose.send) {
+                    await pose.send({ image: canvas });
+                }
+                
+                processedFrames++;
+                
+                // UI 업데이트
+                const progress = (processedFrames / totalFrames) * 100;
+                if (progressFill) {
+                    progressFill.style.width = `${progress}%`;
+                }
+                if (frameInfo) {
+                    frameInfo.textContent = `프레임 ${processedFrames}/${totalFrames} 분석 중...`;
+                }
+                
+                // CPU 과부하 방지
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+            } catch (error) {
+                log(`프레임 ${i} 처리 오류: ${error.message}`);
+                continue;
+            }
+        }
+
+        // 분석 완료 대기
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        log('=== 분석 완료 ===', {
+            처리프레임: processedFrames,
+            감지프레임: frameAnalysisData.length,
+            감지율: frameAnalysisData.length > 0 ? 
+                `${((frameAnalysisData.length / processedFrames) * 100).toFixed(1)}%` : '0%'
+        });
+
+        // 결과 계산
+        if (frameAnalysisData.length > 0) {
+            calculateFinalScores();
+        } else {
+            // 감지 실패 시 기본 점수
+            analyzeResults.scores = {
+                depth: 60,
+                posture: 60,
+                balance: 60,
+                speed: 60,
+                overall: 60
+            };
+            generateFeedback({ knee: 120, hip: 90, back: 85 }, analyzeResults.scores);
+        }
+
+        // 결과 표시
+        setTimeout(() => {
+            isAnalyzing = false;
+            showResults();
+        }, 1000);
+        
+    } catch (error) {
+        console.error('[AI Squat] 분석 오류:', error);
+        alert(`분석 중 오류가 발생했습니다:\n${error.message}`);
+        isAnalyzing = false;
+        resetAnalysis();
     }
 }
 
-/* 접근성 향상 */
-.btn:focus,
-.upload-area:focus {
-    outline: 3px solid var(--secondary-color);
-    outline-offset: 3px;
+// Pose 결과 처리
+function onPoseResults(results) {
+    try {
+        if (!results || !results.poseLandmarks) {
+            return;
+        }
+
+        const landmarks = results.poseLandmarks;
+        
+        // 필요한 랜드마크 확인
+        if (!landmarks[11] || !landmarks[23] || !landmarks[25] || !landmarks[27]) {
+            log('필요한 랜드마크 누락');
+            return;
+        }
+        
+        // 가시성 체크
+        const minVisibility = 0.3;
+        if (landmarks[25].visibility < minVisibility || 
+            landmarks[27].visibility < minVisibility) {
+            return;
+        }
+        
+        // 각도 계산
+        const angles = calculateAngles(landmarks);
+        
+        // 유효성 검증
+        if (angles.knee < 30 || angles.knee > 180 || isNaN(angles.knee)) {
+            return;
+        }
+        
+        log('포즈 감지 성공', {
+            무릎각도: angles.knee.toFixed(1),
+            프레임: frameAnalysisData.length + 1
+        });
+        
+        // 데이터 저장
+        frameAnalysisData.push({
+            timestamp: uploadedVideo?.currentTime || 0,
+            angles: angles,
+            landmarks: landmarks
+        });
+        
+    } catch (error) {
+        console.error('[AI Squat] Pose 결과 처리 오류:', error);
+    }
 }
 
-/* 버튼 그룹 */
-.button-group {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
+// 최종 점수 계산
+function calculateFinalScores() {
+    log('최종 점수 계산 시작', { 
+        총프레임수: frameAnalysisData.length 
+    });
+
+    if (frameAnalysisData.length === 0) {
+        analyzeResults.scores = {
+            depth: 60,
+            posture: 60,
+            balance: 60,
+            speed: 60,
+            overall: 60
+        };
+        return;
+    }
+
+    // 가장 깊은 스쿼트 찾기
+    let bestDepthFrame = frameAnalysisData[0];
+    let minKneeAngle = 180;
+    
+    frameAnalysisData.forEach(frame => {
+        if (frame.angles.knee < minKneeAngle) {
+            minKneeAngle = frame.angles.knee;
+            bestDepthFrame = frame;
+        }
+    });
+
+    log('최고 깊이 프레임', {
+        무릎각도: minKneeAngle.toFixed(1),
+        시간: bestDepthFrame.timestamp.toFixed(2)
+    });
+
+    // 점수 계산
+    const depthScore = calculateDepthScore(minKneeAngle);
+    const postureScore = calculatePostureScore(
+        bestDepthFrame.angles.hip, 
+        bestDepthFrame.angles.back
+    );
+    const balanceScore = calculateAverageBalance();
+    const speedScore = calculateSpeedScore(frameAnalysisData);
+
+    // 종합 점수
+    const overall = Math.round(
+        depthScore * 0.4 +
+        postureScore * 0.3 +
+        balanceScore * 0.2 +
+        speedScore * 0.1
+    );
+
+    analyzeResults.scores = {
+        depth: depthScore,
+        posture: postureScore,
+        balance: balanceScore,
+        speed: speedScore,
+        overall: overall
+    };
+
+    log('최종 점수', analyzeResults.scores);
+
+    // 피드백 생성
+    generateFeedback(bestDepthFrame.angles, analyzeResults.scores);
 }
 
-/* 스크롤바 커스터마이징 */
-::-webkit-scrollbar {
-    width: 8px;
+// 평균 균형 점수 계산
+function calculateAverageBalance() {
+    if (frameAnalysisData.length === 0) return 60;
+    
+    const balanceScores = frameAnalysisData.map(frame => 
+        calculateBalanceScore(frame.landmarks)
+    );
+    return Math.round(
+        balanceScores.reduce((a, b) => a + b, 0) / balanceScores.length
+    );
 }
 
-::-webkit-scrollbar-track {
-    background: var(--dark-bg);
+// 개선된 깊이 점수 계산 (더 관대한 기준)
+function calculateDepthScore(kneeAngle) {
+    log(`깊이 점수 계산 - 무릎 각도: ${kneeAngle.toFixed(1)}도`);
+    
+    if (kneeAngle <= 90) {
+        return 100;
+    } else if (kneeAngle <= 100) {
+        return 95;
+    } else if (kneeAngle <= 110) {
+        return 85;
+    } else if (kneeAngle <= 120) {
+        return 75;
+    } else if (kneeAngle <= 130) {
+        return 65;
+    } else if (kneeAngle <= 140) {
+        return 55;
+    } else {
+        return Math.max(30, 50 - (kneeAngle - 140) * 0.5);
+    }
 }
 
-::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 4px;
+// 개선된 자세 점수 계산
+function calculatePostureScore(hipAngle, backAngle) {
+    let score = 100;
+    
+    // 엉덩이 각도 (더 넓은 범위 허용)
+    if (hipAngle < 70 || hipAngle > 110) {
+        score -= 20;
+    } else if (hipAngle < 80 || hipAngle > 100) {
+        score -= 10;
+    }
+    
+    // 등 각도 (자연스러운 기울기 허용)
+    if (backAngle < 60 || backAngle > 120) {
+        score -= 20;
+    } else if (backAngle < 70 || backAngle > 110) {
+        score -= 10;
+    }
+    
+    return Math.max(40, score);
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-color);
+// 균형 점수 계산
+function calculateBalanceScore(landmarks) {
+    // 좌우 무릎 높이 차이
+    const leftKnee = landmarks[25];
+    const rightKnee = landmarks[26];
+    const heightDiff = Math.abs(leftKnee.y - rightKnee.y);
+    
+    if (heightDiff < 0.02) return 100;
+    if (heightDiff < 0.05) return 90;
+    if (heightDiff < 0.1) return 80;
+    if (heightDiff < 0.15) return 70;
+    return 60;
 }
+
+// 속도/일관성 점수 계산
+function calculateSpeedScore(frameData) {
+    if (frameData.length < 2) return 85;
+    
+    let angleChanges = [];
+    for (let i = 1; i < frameData.length; i++) {
+        const change = Math.abs(
+            frameData[i].angles.knee - frameData[i-1].angles.knee
+        );
+        angleChanges.push(change);
+    }
+    
+    const avgChange = angleChanges.reduce((a, b) => a + b, 0) / angleChanges.length;
+    log('평균 각도 변화', avgChange);
+    
+    if (avgChange < 5) return 100;
+    if (avgChange < 10) return 90;
+    if (avgChange < 15) return 80;
+    if (avgChange < 20) return 70;
+    return 60;
+}
+
+// 각도 계산 함수
+function calculateAngles(landmarks) {
+    try {
+        // 무릎 각도 (왼쪽 다리 기준)
+        const knee = calculateAngle(
+            landmarks[23], // 왼쪽 엉덩이
+            landmarks[25], // 왼쪽 무릎
+            landmarks[27]  // 왼쪽 발목
+        );
+        
+        // 엉덩이 각도
+        const hip = calculateAngle(
+            landmarks[11], // 왼쪽 어깨
+            landmarks[23], // 왼쪽 엉덩이
+            landmarks[25]  // 왼쪽 무릎
+        );
+        
+        // 등 각도 (상체 기울기)
+        const back = calculateAngle(
+            landmarks[11], // 왼쪽 어깨
+            landmarks[23], // 왼쪽 엉덩이
+            { x: landmarks[23].x, y: 1, z: landmarks[23].z } // 수직선
+        );
+        
+        return { knee, hip, back };
+    } catch (error) {
+        console.error('[AI Squat] 각도 계산 오류:', error);
+        return { knee: 180, hip: 180, back: 90 };
+    }
+}
+
+function calculateAngle(a, b, c) {
+    const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+    let degrees = Math.abs(radians * 180 / Math.PI);
+    if (degrees > 180) degrees = 360 - degrees;
+    return degrees;
+}
+
+// 피드백 생성
+function generateFeedback(angles, scores) {
+    analyzeResults.feedback = [];
+    
+    // 깊이 피드백
+    if (scores.depth >= 90) {
+        analyzeResults.feedback.push({
+            type: 'success',
+            title: '깊이 훌륭해요! 💪',
+            content: '스쿼트 깊이가 완벽합니다. 무릎이 적절한 각도로 굽혀졌어요.'
+        });
+    } else if (scores.depth >= 70) {
+        analyzeResults.feedback.push({
+            type: 'warning',
+            title: '깊이 조금만 더! 📏',
+            content: '조금 더 깊게 앉아보세요. 허벅지가 바닥과 평행이 되도록 해보세요.'
+        });
+    } else {
+        analyzeResults.feedback.push({
+            type: 'danger',
+            title: '깊이 개선 필요 🎯',
+            content: '스쿼트 시 더 깊게 앉아야 해요. 천천히 연습하며 유연성을 기르세요.'
+        });
+    }
+    
+    // 자세 피드백
+    if (scores.posture >= 85) {
+        analyzeResults.feedback.push({
+            type: 'success',
+            title: '자세 완벽해요! ✨',
+            content: '상체 자세가 매우 좋습니다. 척추 정렬이 잘 유지되고 있어요.'
+        });
+    } else if (scores.posture >= 65) {
+        analyzeResults.feedback.push({
+            type: 'warning',
+            title: '자세 교정 필요 📐',
+            content: '상체를 좀 더 곧게 세워주세요. 시선은 정면을 향하도록 하세요.'
+        });
+    }
+    
+    // 균형 피드백
+    if (scores.balance >= 85) {
+        analyzeResults.feedback.push({
+            type: 'success',
+            title: '균형감 최고! ⚖️',
+            content: '좌우 균형이 잘 잡혀있어요. 안정적인 동작입니다.'
+        });
+    } else if (scores.balance < 70) {
+        analyzeResults.feedback.push({
+            type: 'warning',
+            title: '균형 개선 필요 🤸',
+            content: '좌우 균형을 더 신경써주세요. 거울을 보며 연습하면 도움이 됩니다.'
+        });
+    }
+    
+    // 종합 격려 메시지
+    if (scores.overall >= 85) {
+        analyzeResults.feedback.push({
+            type: 'motivation',
+            title: '정말 잘하고 있어요! 🌟',
+            content: '이미 훌륭한 스쿼트 실력을 가지고 있네요! 꾸준히 연습하면 더욱 완벽해질 거예요.'
+        });
+    } else if (scores.overall >= 70) {
+        analyzeResults.feedback.push({
+            type: 'motivation',
+            title: '좋은 시작이에요! 🚀',
+            content: '기본기가 탄탄해요. 위의 피드백을 참고하여 조금씩 개선해나가세요!'
+        });
+    } else {
+        analyzeResults.feedback.push({
+            type: 'motivation',
+            title: '함께 성장해요! 🌱',
+            content: '모든 전문가도 처음엔 초보였어요. 꾸준한 연습이 실력을 만듭니다!'
+        });
+    }
+}
+
+// 결과 표시
+function showResults() {
+    log('결과 표시');
+    
+    // UI 전환
+    document.getElementById('analyzingSection').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'block';
+    updateStep(3);
+    
+    // 점수 애니메이션
+    animateScore();
+    
+    // 세부 점수 표시
+    document.getElementById('depthScore').textContent = analyzeResults.scores.depth + '점';
+    document.getElementById('postureScore').textContent = analyzeResults.scores.posture + '점';
+    document.getElementById('balanceScore').textContent = analyzeResults.scores.balance + '점';
+    document.getElementById('speedScore').textContent = analyzeResults.scores.speed + '점';
+    
+    // 피드백 표시
+    displayFeedback();
+}
+
+// 점수 애니메이션
+function animateScore() {
+    const targetScore = analyzeResults.scores.overall;
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const progressCircle = document.querySelector('.score-ring .progress');
+    
+    let currentScore = 0;
+    const duration = 1500;
+    const increment = targetScore / (duration / 16);
+    
+    const animation = setInterval(() => {
+        currentScore += increment;
+        if (currentScore >= targetScore) {
+            currentScore = targetScore;
+            clearInterval(animation);
+        }
+        
+        scoreDisplay.textContent = Math.round(currentScore);
+        
+        // 원형 프로그레스 업데이트
+        const offset = 565.48 - (565.48 * currentScore / 100);
+        progressCircle.style.strokeDashoffset = offset;
+        
+        // 점수에 따른 색상 변경
+        if (currentScore >= 80) {
+            progressCircle.style.stroke = 'var(--success)';
+        } else if (currentScore >= 60) {
+            progressCircle.style.stroke = 'var(--warning)';
+        } else {
+            progressCircle.style.stroke = 'var(--danger)';
+        }
+    }, 16);
+}
+
+// 피드백 표시
+function displayFeedback() {
+    const container = document.getElementById('feedbackContainer');
+    container.innerHTML = '';
+    
+    analyzeResults.feedback.forEach((feedback, index) => {
+        const feedbackCard = document.createElement('div');
+        feedbackCard.className = 'feedback-card';
+        feedbackCard.style.animationDelay = `${index * 0.1}s`;
+        feedbackCard.style.animation = 'fadeIn 0.5s ease forwards';
+        
+        const icon = getFeedbackIcon(feedback.type);
+        
+        feedbackCard.innerHTML = `
+            <div class="feedback-title">
+                <span>${icon}</span>
+                <span>${feedback.title}</span>
+            </div>
+            <div class="feedback-content">${feedback.content}</div>
+        `;
+        
+        container.appendChild(feedbackCard);
+    });
+}
+
+function getFeedbackIcon(type) {
+    switch(type) {
+        case 'success': return '✅';
+        case 'warning': return '⚠️';
+        case 'danger': return '❌';
+        case 'motivation': return '💪';
+        default: return '📌';
+    }
+}
+
+// 단계 업데이트
+function updateStep(step) {
+    document.querySelectorAll('.step').forEach((el, index) => {
+        if (index < step) {
+            el.classList.add('completed');
+            el.classList.remove('active');
+        } else if (index === step - 1) {
+            el.classList.add('active');
+            el.classList.remove('completed');
+        } else {
+            el.classList.remove('active', 'completed');
+        }
+    });
+}
+
+// 결과 다운로드
+function downloadResult() {
+    log('결과 다운로드 시작');
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 400;
+    canvas.height = 600;
+    
+    // 배경
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // 제목
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 32px Noto Sans KR';
+    ctx.textAlign = 'center';
+    ctx.fillText('AI 스쿼트 분석 결과', 200, 50);
+    
+    // 점수
+    ctx.font = 'bold 72px Noto Sans KR';
+    ctx.fillStyle = analyzeResults.scores.overall >= 80 ? '#51cf66' : 
+                   analyzeResults.scores.overall >= 60 ? '#ff9f40' : '#ff6b6b';
+    ctx.fillText(analyzeResults.scores.overall + '점', 200, 150);
+    
+    // 세부 점수
+    ctx.font = '20px Noto Sans KR';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.fillText('깊이: ' + analyzeResults.scores.depth + '점', 50, 250);
+    ctx.fillText('자세: ' + analyzeResults.scores.posture + '점', 50, 290);
+    ctx.fillText('균형: ' + analyzeResults.scores.balance + '점', 50, 330);
+    ctx.fillText('속도: ' + analyzeResults.scores.speed + '점', 50, 370);
+    
+    // 날짜
+    ctx.font = '16px Noto Sans KR';
+    ctx.fillStyle = '#a0a0a0';
+    ctx.textAlign = 'center';
+    ctx.fillText(new Date().toLocaleDateString('ko-KR'), 200, 450);
+    
+    // 하단 로고
+    ctx.font = 'bold 24px Noto Sans KR';
+    ctx.fillStyle = '#FF6B6B';
+    ctx.fillText('AI 스쿼트 코치', 200, 550);
+    
+    // 다운로드
+    canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `squat_result_${new Date().getTime()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
+// 분석 초기화
+function resetAnalysis() {
+    log('분석 초기화');
+    
+    // 상태 초기화
+    analyzeResults = {
+        scores: {
+            depth: 0,
+            posture: 0,
+            balance: 0,
+            speed: 0,
+            overall: 0
+        },
+        feedback: []
+    };
+    frameAnalysisData = [];
+    isAnalyzing = false;
+    
+    // UI 초기화
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('analyzingSection').style.display = 'none';
+    document.getElementById('uploadSection').style.display = 'block';
+    document.getElementById('videoPreview').style.display = 'none';
+    document.getElementById('videoInput').value = '';
+    document.getElementById('analyzeBtn').disabled = true;
+    updateStep(1);
+    
+    // 진행률 초기화
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('frameInfo').textContent = '';
+    document.getElementById('analysisStatus').textContent = '잠시만 기다려주세요';
+    
+    // 비디오 정리
+    if (uploadedVideo) {
+        const currentSrc = uploadedVideo.src;
+        uploadedVideo.src = '';
+        if (currentSrc && currentSrc.startsWith('blob:')) {
+            URL.revokeObjectURL(currentSrc);
+        }
+    }
+    
+    // 디버그 패널 초기화
+    const debugPanel = document.getElementById('debugPanel');
+    if (debugPanel) {
+        debugPanel.innerHTML = '';
+    }
+}
+
+// 페이지 로드 시 초기화
+window.addEventListener('DOMContentLoaded', async () => {
+    log('=== 페이지 로드 완료 ===');
+    
+    // UI 이벤트 초기화
+    initializeUpload();
+    
+    // 버튼 이벤트
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', startAnalysis);
+    }
+    
+    const downloadBtn = document.getElementById('downloadBtn');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadResult);
+    }
+    
+    const resetBtn = document.getElementById('resetBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetAnalysis);
+    }
+    
+    // MediaPipe 로드 대기
+    let attempts = 0;
+    const maxAttempts = 30;
+    
+    const checkMediaPipe = setInterval(async () => {
+        attempts++;
+        
+        if (typeof Pose !== 'undefined') {
+            clearInterval(checkMediaPipe);
+            log('MediaPipe Pose 라이브러리 로드 확인');
+            
+            try {
+                await initializePose();
+                log('Pose 초기화 성공');
+            } catch (error) {
+                console.error('[AI Squat] 초기 Pose 초기화 실패:', error);
+            }
+        } else if (attempts >= maxAttempts) {
+            clearInterval(checkMediaPipe);
+            console.error('[AI Squat] MediaPipe 로드 타임아웃');
+            alert('필요한 라이브러리를 로드할 수 없습니다.\n페이지를 새로고침하거나 인터넷 연결을 확인해주세요.');
+        } else if (attempts % 10 === 0) {
+            log(`MediaPipe 로딩 대기 중... (${attempts}/${maxAttempts})`);
+        }
+    }, 500);
+});
+
+// 전역 디버그 함수
+window.aiSquatDebug = function() {
+    console.group('[AI Squat] 디버그 정보');
+    console.log('Pose 초기화 상태:', poseInitialized);
+    console.log('Pose 객체:', !!pose);
+    console.log('현재 분석 중:', isAnalyzing);
+    console.log('수집된 프레임 수:', frameAnalysisData.length);
+    console.log('분석 결과:', analyzeResults);
+    console.log('MediaPipe 로드 상태:', typeof Pose !== 'undefined');
+    if (uploadedVideo) {
+        console.log('비디오 정보:', {
+            src: uploadedVideo.src ? 'loaded' : 'empty',
+            duration: uploadedVideo.duration,
+            readyState: uploadedVideo.readyState,
+            videoWidth: uploadedVideo.videoWidth,
+            videoHeight: uploadedVideo.videoHeight,
+            currentTime: uploadedVideo.currentTime
+        });
+    }
+    console.groupEnd();
+};
+
+// 에러 핸들링
+window.addEventListener('error', (event) => {
+    if (event.message.includes('pose') || event.message.includes('mediapipe')) {
+        console.error('[AI Squat] MediaPipe 관련 에러:', event.message);
+        log(`에러 발생: ${event.message}`);
+    }
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    if (event.reason && event.reason.toString().includes('mediapipe')) {
+        console.error('[AI Squat] MediaPipe Promise 에러:', event.reason);
+    }
+});
+
+// 모바일 최적화
+let touchStartY = 0;
+document.addEventListener('touchstart', (e) => {
+    touchStartY = e.touches[0].clientY;
+});
+
+document.addEventListener('touchmove', (e) => {
+    const touchY = e.touches[0].clientY;
+    const diff = touchStartY - touchY;
+    
+    if (diff > 0 && window.scrollY === 0) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+console.log('[AI Squat] 스크립트 로드 완료. 디버그: window.aiSquatDebug()');

@@ -2,111 +2,137 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="AI 기반 스쿼트 자세 분석기 - 완벽한 스쿼트를 위한 개인 트레이너">
     <title>AI 스쿼트 코치</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <!-- 스타일시트 -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- MediaPipe 포즈 감지 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6.1629159505/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
 </head>
 <body>
-    <div class="container">
-        <header role="banner" style="display: flex; align-items: center; justify-content: space-between;">
-            <div>
-                <h1>AI 스쿼트 코치 🏋️‍♀️</h1>
-                <p class="subtitle">당신의 스쿼트 자세를 분석하고 기록해 보세요</p>
-            </div>
-            <button id="theme-toggle" aria-label="다크모드 토글" style="font-size: 1.7em; background: none; border: none; cursor: pointer; margin-left: 16px;">
-                🌙
-            </button>
+    <div class="app-container">
+        <!-- 헤더 -->
+        <header class="header">
+            <h1>AI 스쿼트 코치</h1>
+            <p>완벽한 스쿼트 자세를 위한 당신의 개인 트레이너</p>
         </header>
-        <main>
-            <!-- 1단계: 영상 업로드 -->
-            <section id="upload-section" class="card">
-                <h3>1. 영상 업로드</h3>
-                <div class="upload-area">
-                    <label for="videoUpload" class="file-label">
-                        <div class="upload-icon">📂</div>
-                        <div class="upload-text">
-                            <strong>여기를 눌러 영상 선택</strong>
-                            <small>MP4, MOV, AVI 등 지원</small>
-                        </div>
-                    </label>
-                    <input type="file" id="videoUpload" accept="video/*" style="display:none;">
+
+        <!-- 단계 표시기 -->
+        <div class="step-indicator">
+            <div class="step active" data-step="1">1</div>
+            <div class="step" data-step="2">2</div>
+            <div class="step" data-step="3">3</div>
+        </div>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="main-content">
+            <!-- 업로드 섹션 -->
+            <section id="uploadSection" class="card upload-section">
+                <h2>스쿼트 영상 업로드</h2>
+                <p class="text-muted">측면에서 촬영한 영상이 가장 정확한 분석을 제공합니다</p>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📹</div>
+                    <p>여기를 눌러 영상 선택</p>
+                    <small>또는 파일을 드래그하세요</small>
                 </div>
-                <div id="initial-status" class="status-message" role="status" aria-live="polite"></div>
-            </section>
-            <!-- 2단계: 영상 확인 및 분석 -->
-            <section id="analysis-section" class="card" style="display: none;" aria-labelledby="analysis-section-title">
-                <h3 id="analysis-section-title">2. 영상 확인 및 분석</h3>
-                <div class="video-preview">
-                    <div id="videoContainer">
-                        <video id="analysisVideo" style="display: none;" playsinline muted loop aria-label="분석할 영상"></video>
-                        <canvas id="output_canvas" aria-label="분석 결과 캔버스"></canvas>
-                        <!-- 광고 오버레이 (더 자연스럽게 통합) -->
-                        <div id="ad-overlay" style="display: none;" role="alert" aria-live="assertive">
-                            <div class="ad-content">
-                                <div class="ad-icon" aria-hidden="true">🎯</div>
-                                <h2>분석 준비 중...</h2>
-                                <p>AI가 당신의 스쿼트를 분석하고 있어요!</p>
-                                <div class="loading" aria-hidden="true"></div>
-                            </div>
-                        </div>
-                    </div>
+                
+                <input type="file" id="videoInput" accept="video/*" style="display: none;">
+                
+                <div id="videoPreview" class="video-container" style="display: none;">
+                    <video id="uploadedVideo" controls></video>
                 </div>
-                <!-- 진행률 바 추가 -->
-                <div id="progress-container" style="margin: 16px 0; display: none;">
-                    <progress id="analysis-progress" value="0" max="100" style="width: 100%; height: 18px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="분석 진행률"></progress>
-                    <span id="progress-percent" style="margin-left: 8px; font-weight: 600; color: var(--primary-color);">0%</span>
-                </div>
-                <div class="analysis-controls">
-                    <button id="startAnalysisBtn" class="button-primary" aria-label="이 영상으로 분석 시작하기">
-                        <span class="btn-icon" aria-hidden="true">🔬</span>
-                        <span class="btn-text">이 영상으로 분석 시작하기</span>
+                
+                <div class="button-group" style="margin-top: 20px;">
+                    <button id="analyzeBtn" class="btn btn-primary" disabled>
+                        분석 시작하기
                     </button>
-                    <p class="analysis-tip">팁: 측면에서 촬영된 영상이 더 정확한 분석을 제공합니다</p>
                 </div>
             </section>
-            <!-- 3단계: 최종 분석 결과 -->
-            <section id="result-section" class="card" style="display: none;">
-                <h3>3. 최종 분석 결과 🏆</h3>
-                <div id="status" class="status-container"></div>
-                <div id="results-display-area">
-                    <div id="story-canvas-container" class="result-canvas">
-                        <canvas id="story-canvas" style="width:100%; border-radius: 8px;"></canvas>
-                    </div>
-                    <div id="no-squat-result-area" class="no-result" style="display: none;">
-                        <div class="no-result-icon">🤖</div>
-                        <h2>분석 실패!</h2>
-                        <p>유효한 스쿼트 동작을 인식하지 못했습니다.</p>
-                        <p class="help-text">자세나 영상 각도를 확인 후 다시 시도해보세요.</p>
-                    </div>
+
+            <!-- 분석 중 섹션 -->
+            <section id="analyzingSection" class="card analyzing" style="display: none;">
+                <div class="spinner"></div>
+                <h3>AI가 영상을 분석중입니다...</h3>
+                <p id="analysisStatus">잠시만 기다려주세요</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
                 </div>
-                <div id="coach-feedback-area" class="feedback-section">
-                    <div id="coach-bubble" style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px;">
-                        <span style="font-size:2.2em;">🤖</span>
-                        <div id="coach-message" style="background: var(--background-color); color: var(--text-color); border-radius: 16px; padding: 14px 18px; box-shadow: var(--shadow-sm); font-size: 1.08em; max-width: 90%;">
-                            AI 코치가 분석 결과를 준비 중입니다...
+                <small id="frameInfo" style="color: var(--gray-text);"></small>
+            </section>
+
+            <!-- 결과 섹션 -->
+            <section id="resultsSection" class="results-section" style="display: none;">
+                <!-- 점수 카드 -->
+                <div class="card score-card">
+                    <div class="score-meter">
+                        <svg class="score-ring" viewBox="0 0 200 200">
+                            <circle class="bg" cx="100" cy="100" r="90"></circle>
+                            <circle class="progress" cx="100" cy="100" r="90"
+                                    stroke-dasharray="565.48" stroke-dashoffset="565.48"></circle>
+                        </svg>
+                        <div class="score-center">
+                            <div class="score-display" id="scoreDisplay">0</div>
                         </div>
                     </div>
-                    <h3>AI 코치의 한마디 🤖</h3>
-                    <div id="feedbackList" class="feedback-item feedback-info"></div>
+                    <div class="score-label">종합 점수</div>
+                    
+                    <!-- 세부 점수 -->
+                    <div class="score-breakdown">
+                        <div class="score-item">
+                            <div class="score-item-label">깊이</div>
+                            <div class="score-item-value" id="depthScore">-</div>
+                        </div>
+                        <div class="score-item">
+                            <div class="score-item-label">자세</div>
+                            <div class="score-item-value" id="postureScore">-</div>
+                        </div>
+                        <div class="score-item">
+                            <div class="score-item-label">균형</div>
+                            <div class="score-item-value" id="balanceScore">-</div>
+                        </div>
+                        <div class="score-item">
+                            <div class="score-item-label">속도</div>
+                            <div class="score-item-value" id="speedScore">-</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="result-actions">
-                    <button id="shareStoryBtn" class="button-primary" aria-label="결과 이미지 다운로드">
-                        <span class="btn-icon">📸</span>
-                        <span class="btn-text">결과 이미지 다운로드</span>
+
+                <!-- AI 피드백 -->
+                <div class="card">
+                    <h3 style="margin-bottom: 20px;">AI 코치의 피드백</h3>
+                    <div id="feedbackContainer"></div>
+                </div>
+
+                <!-- 액션 버튼 -->
+                <div class="card" style="text-align: center;">
+                    <button class="btn btn-primary" id="downloadBtn">
+                        결과 이미지 다운로드
                     </button>
-                    <button id="snsShareBtn" class="button-secondary" aria-label="SNS로 공유" style="margin-left: 8px;">
-                        <span class="btn-icon">🔗</span>
-                        <span class="btn-text">SNS로 공유</span>
-                    </button>
-                    <button id="resetBtn" class="button-secondary" aria-label="새로운 영상 분석">
-                        <span class="btn-icon">🔄</span>
-                        <span class="btn-text">새로운 영상 분석하기</span>
+                    <button class="btn btn-secondary" id="resetBtn" style="margin-left: 10px;">
+                        새로운 영상 분석
                     </button>
                 </div>
             </section>
         </main>
     </div>
-    <script type="module" src="js/main.js"></script>
+
+    <!-- 캔버스 (분석용) -->
+    <canvas id="outputCanvas" style="display: none;"></canvas>
+
+    <!-- 디버그 패널 -->
+    <div id="debugPanel" class="debug-panel"></div>
+
+    <!-- JavaScript -->
+    <script src="script.js"></script>
 </body>
 </html>

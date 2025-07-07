@@ -967,7 +967,7 @@ async function downloadResult() {
     ctx.font = '30px Noto Sans KR';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.textAlign = 'center';
-    ctx.fillText(new Date().toLocaleDateString('ko-KR'), centerX, 1700);toLocaleDateString('ko-KR'), centerX, 1700);
+    ctx.fillText(new Date().toLocaleDateString('ko-KR'), centerX, 1700);
     
     // 하단 로고
     ctx.font = 'bold 45px Noto Sans KR';
@@ -1171,7 +1171,7 @@ window.addEventListener('unhandledrejection', (event) => {
     }
 });
 
-console.log('[AI Squat] 스크립트 로드 완료. 디버그: window.aiSquatDebug()');.depth + '점';
+console.log('[AI Squat] 스크립트 로드 완료. 디버그: window.aiSquatDebug()');
     document.getElementById('postureScore').textContent = analyzeResults.scores// 전역 변수
 let pose = null;
 let uploadedVideo = null;

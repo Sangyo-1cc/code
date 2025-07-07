@@ -1172,6 +1172,3 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 console.log('[AI Squat] 스크립트 로드 완료. 디버그: window.aiSquatDebug()');    
-}, { passive: false });
-
-console.log('[AI Squat] 스크립트 로드 완료. 디버그: window.aiSquatDebug()');

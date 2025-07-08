@@ -1,147 +1,1244 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="AI 기반 스쿼트 자세 분석기 - 완벽한 스쿼트를 위한 개인 트레이너">
-    <title>AI 스쿼트 코치</title>
+/* 변수 정의 */
+:root {
+    --primary: #667eea;
+    --secondary: #764ba2;
+    --success: #4caf50;
+    --warning: #ff9800;
+    --danger: #f44336;
+    --gray-text: #6c757d;
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* 전역 스타일 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    /* 모바일 스크롤 개선 */
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    min-height: 100vh;
+    color: #333;
+    overflow-x: hidden;
+    /* 모바일 스크롤 성능 개선 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 컨테이너 */
+.app-container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    /* 모바일 스크롤 개선 */
+    position: relative;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 헤더 */
+.header {
+    text-align: center;
+    color: white;
+    padding: 30px 0 20px;
+    animation: fadeInDown 0.8s ease;
+}
+
+.header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.header p {
+    font-size: 1rem;
+    opacity: 0.95;
+}
+
+/* 프라이버시 배너 */
+.privacy-banner {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); /* Safari 지원 */
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    color: white;
+    text-align: center;
+    font-size: 0.95rem;
+    animation: fadeIn 0.8s ease 0.3s both;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.privacy-banner .icon {
+    font-size: 1.5rem;
+}
+
+/* 단계 표시기 */
+.step-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin: 30px 0;
+    animation: fadeIn 0.8s ease 0.5s both;
+}
+
+.step {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.step.active {
+    background: white;
+    color: var(--primary);
+    transform: scale(1.2);
+    box-shadow: 0 5px 20px rgba(255, 255, 255, 0.5);
+}
+
+.step.completed {
+    background: var(--success);
+    color: white;
+}
+
+.step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    width: 30px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-50%);
+}
+
+/* 카드 스타일 */
+.card {
+    background: var(--card-bg);
+    border-radius: 25px;
+    padding: 30px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    animation: fadeInUp 0.8s ease;
+}
+
+/* 업로드 섹션 */
+.upload-section h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--primary);
+}
+
+.upload-area {
+    border: 3px dashed var(--primary);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(102, 126, 234, 0.05);
+    /* 터치 타겟 최적화 */
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.2);
+    touch-action: manipulation;
+}
+
+.upload-area:hover {
+    background: rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+}
+
+.upload-area.dragover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: var(--secondary);
+}
+
+.upload-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.upload-area p {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+.upload-area small {
+    color: var(--gray-text);
+}
+
+/* 비디오 컨테이너 */
+.video-container {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    margin: 20px 0;
+    background: #000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.video-container video,
+.video-container canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.video-container canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* 버튼 스타일 */
+.btn {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+    /* 모바일 터치 최적화 */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.btn:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: white;
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+.btn-secondary:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.button-group {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* 분석 중 */
+.analyzing {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.spinner {
+    width: 80px;
+    height: 80px;
+    border: 5px solid rgba(102, 126, 234, 0.3);
+    border-top: 5px solid var(--primary);
+    border-radius: 50%;
+    margin: 0 auto 30px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.analyzing h3 {
+    color: var(--primary);
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.analyzing p {
+    color: var(--gray-text);
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    background: rgba(102, 126, 234, 0.2);
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 5px;
+}
+
+/* 결과 섹션 */
+.score-card {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.score-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.score-meter {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 30px;
+}
+
+.score-ring {
+    transform: rotate(-90deg);
+}
+
+.score-ring .bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 20;
+}
+
+.score-ring .progress {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 20;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.5s ease;
+}
+
+.score-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.score-display {
+    font-size: 4rem;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.score-label {
+    font-size: 1.5rem;
+    opacity: 0.9;
+    margin-bottom: 30px;
+}
+
+.score-breakdown {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 30px;
+    position: relative;
+    z-index: 1;
+}
+
+.score-item {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 15px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.score-item-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 5px;
+}
+
+.score-item-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* 피드백 카드 */
+.feedback-card {
+    padding: 20px;
+    margin: 15px 0;
+    border-radius: 15px;
+    border-left: 5px solid;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.feedback-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.feedback-card.success {
+    border-color: var(--success);
+    background: #e8f5e9;
+}
+
+.feedback-card.warning {
+    border-color: var(--warning);
+    background: #fff3e0;
+}
+
+.feedback-card.danger {
+    border-color: var(--danger);
+    background: #ffebee;
+}
+
+.feedback-card.motivation {
+    border-color: #2196f3;
+    background: #e3f2fd;
+}
+
+.feedback-title {
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.feedback-content {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 유틸리티 */
+.text-muted {
+    color: var(--gray-text);
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* 디버그 패널 */
+.debug-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #0f0;
+    padding: 10px;
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    max-width: 300px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    z-index: 9999;
+}
+
+.debug-panel.show {
+    display: block;
+}
+
+/* 로딩 */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(102, 126, 234, 0.3);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 10px;
+}
+
+/* 반응형 */
+@media (max-width: 480px) {
+    .header h1 {
+        font-size: 1.8rem;
+    }
     
-    <!-- Favicon 설정 -->
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==">
+    .card {
+        padding: 20px;
+    }
     
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    .score-display {
+        font-size: 3rem;
+    }
     
-    <!-- 스타일시트 -->
-    <link rel="stylesheet" href="styles.css">
+    .upload-icon {
+        font-size: 3rem;
+    }
     
-    <!-- MediaPipe 포즈 감지 -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6.1629159505/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
-</head>
-<body>
-    <div class="app-container">
-        <!-- 헤더 -->
-        <header class="header">
-            <h1>AI 스쿼트 코치</h1>
-            <p>완벽한 스쿼트 자세를 위한 당신의 개인 트레이너</p>
-        </header>
+    .upload-area {
+        padding: 30px 20px;
+    }
+    
+    .score-meter {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .score-ring .bg,
+    .score-ring .progress {
+        stroke-width: 15;
+    }
+    
+    /* 모바일 버튼 크기 증가 */
+    .btn {
+        padding: 18px 35px;
+        font-size: 1.1rem;
+    }
+}
 
-        <!-- 프라이버시 배너 추가 -->
-        <div class="privacy-banner">
-            <span class="icon">🔒</span>
-            <span>코치는 당신의 영상을 저장하지 않습니다.</span>
-        </div>
+/* 터치 최적화 */
+@media (hover: none) {
+    .btn:active {
+        transform: scale(0.98);
+    }
+    
+    .upload-area:active {
+        transform: scale(0.98);
+    }
+    
+    /* 모바일에서 호버 효과 제거 */
+    .feedback-card:hover {
+        transform: none;
+    }
+    
+    .btn-primary:hover {
+        transform: none;
+    }
+}
 
-        <!-- 단계 표시기 -->
-        <div class="step-indicator">
-            <div class="step active" data-step="1">1</div>
-            <div class="step" data-step="2">2</div>
-            <div class="step" data-step="3">3</div>
-        </div>
+/* iOS 모바일 최적화 */
+@supports (-webkit-touch-callout: none) {
+    /* iOS에서 버튼 스타일 최적화 */
+    .btn {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+    }
+    
+    /* iOS 스크롤 바운스 방지 */
+    .app-container {
+        -webkit-overflow-scrolling: touch;
+    }
+}
 
-        <!-- 메인 컨텐츠 -->
-        <main class="main-content">
-            <!-- 업로드 섹션 -->
-            <section id="uploadSection" class="card upload-section">
-                <h2>스쿼트 영상 업로드</h2>
-                <p class="text-muted">측면에서 촬영한 영상이 가장 정확한 분석을 제공합니다</p>
-                
-                <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">📹</div>
-                    <p>여기를 눌러 영상 선택</p>
-                    <small>또는 파일을 드래그하세요</small>
-                </div>
-                
-                <input type="file" id="videoInput" accept="video/*" style="display: none;">
-                
-                <div id="videoPreview" class="video-container" style="display: none;">
-                    <video id="uploadedVideo" controls></video>
-                </div>
-                
-                <div class="button-group" style="margin-top: 20px;">
-                    <button id="analyzeBtn" class="btn btn-primary" disabled>
-                        분석 시작하기
-                    </button>
-                </div>
-            </section>
+/* 프린트 스타일 */
+@media print {
+    body {
+        background: white;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .btn {
+        display: none;
+    }
+}/* 변수 정의 */
+:root {
+    --primary: #667eea;
+    --secondary: #764ba2;
+    --success: #4caf50;
+    --warning: #ff9800;
+    --danger: #f44336;
+    --gray-text: #6c757d;
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
 
-            <!-- 분석 중 섹션 -->
-            <section id="analyzingSection" class="card analyzing" style="display: none;">
-                <div class="spinner"></div>
-                <h3>AI가 영상을 분석중입니다...</h3>
-                <p id="analysisStatus">잠시만 기다려주세요</p>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <small id="frameInfo" style="color: var(--gray-text);"></small>
-            </section>
+/* 전역 스타일 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-            <!-- 결과 섹션 -->
-            <section id="resultsSection" class="results-section" style="display: none;">
-                <!-- 점수 카드 -->
-                <div class="card score-card">
-                    <div class="score-meter">
-                        <svg class="score-ring" viewBox="0 0 200 200">
-                            <circle class="bg" cx="100" cy="100" r="90"></circle>
-                            <circle class="progress" cx="100" cy="100" r="90"
-                                    stroke-dasharray="565.48" stroke-dashoffset="565.48"></circle>
-                        </svg>
-                        <div class="score-center">
-                            <div class="score-display" id="scoreDisplay">0</div>
-                        </div>
-                    </div>
-                    <div class="score-label">종합 점수</div>
-                    
-                    <!-- 세부 점수 -->
-                    <div class="score-breakdown">
-                        <div class="score-item">
-                            <div class="score-item-label">깊이</div>
-                            <div class="score-item-value" id="depthScore">-</div>
-                        </div>
-                        <div class="score-item">
-                            <div class="score-item-label">자세</div>
-                            <div class="score-item-value" id="postureScore">-</div>
-                        </div>
-                        <div class="score-item">
-                            <div class="score-item-label">균형</div>
-                            <div class="score-item-value" id="balanceScore">-</div>
-                        </div>
-                        <div class="score-item">
-                            <div class="score-item-label">속도</div>
-                            <div class="score-item-value" id="speedScore">-</div>
-                        </div>
-                    </div>
-                </div>
+body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    min-height: 100vh;
+    color: #333;
+    overflow-x: hidden;
+}
 
-                <!-- AI 피드백 -->
-                <div class="card">
-                    <h3 style="margin-bottom: 20px;">AI 코치의 피드백</h3>
-                    <div id="feedbackContainer"></div>
-                </div>
+/* 컨테이너 */
+.app-container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+}
 
-                <!-- 액션 버튼 -->
-                <div class="card" style="text-align: center;">
-                    <button class="btn btn-primary" id="downloadBtn">
-                        📱 인스타 스토리용 다운로드
-                    </button>
-                    <button class="btn btn-secondary" id="resetBtn" style="margin-left: 10px;">
-                        새로운 영상 분석
-                    </button>
-                </div>
-            </section>
-        </main>
-    </div>
+/* 헤더 */
+.header {
+    text-align: center;
+    color: white;
+    padding: 30px 0 20px;
+    animation: fadeInDown 0.8s ease;
+}
 
-    <!-- 캔버스 (분석용) -->
-    <canvas id="outputCanvas" style="display: none;"></canvas>
+.header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
 
-    <!-- 디버그 패널 -->
-    <div id="debugPanel" class="debug-panel"></div>
+.header p {
+    font-size: 1rem;
+    opacity: 0.95;
+}
 
-    <!-- JavaScript -->
-    <script src="script.js"></script>
-</body>
-</html>
+/* 프라이버시 배너 */
+.privacy-banner {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    color: white;
+    text-align: center;
+    font-size: 0.95rem;
+    animation: fadeIn 0.8s ease 0.3s both;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.privacy-banner .icon {
+    font-size: 1.5rem;
+}
+
+/* 단계 표시기 */
+.step-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin: 30px 0;
+    animation: fadeIn 0.8s ease 0.5s both;
+}
+
+.step {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.step.active {
+    background: white;
+    color: var(--primary);
+    transform: scale(1.2);
+    box-shadow: 0 5px 20px rgba(255, 255, 255, 0.5);
+}
+
+.step.completed {
+    background: var(--success);
+    color: white;
+}
+
+.step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    width: 30px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-50%);
+}
+
+/* 카드 스타일 */
+.card {
+    background: var(--card-bg);
+    border-radius: 25px;
+    padding: 30px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    animation: fadeInUp 0.8s ease;
+}
+
+/* 업로드 섹션 */
+.upload-section h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--primary);
+}
+
+.upload-area {
+    border: 3px dashed var(--primary);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.upload-area:hover {
+    background: rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+}
+
+.upload-area.dragover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: var(--secondary);
+}
+
+.upload-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.upload-area p {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+.upload-area small {
+    color: var(--gray-text);
+}
+
+/* 비디오 컨테이너 */
+.video-container {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    margin: 20px 0;
+    background: #000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.video-container video,
+.video-container canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.video-container canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* 버튼 스타일 */
+.btn {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.btn:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: white;
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+.btn-secondary:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.button-group {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* 분석 중 */
+.analyzing {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.spinner {
+    width: 80px;
+    height: 80px;
+    border: 5px solid rgba(102, 126, 234, 0.3);
+    border-top: 5px solid var(--primary);
+    border-radius: 50%;
+    margin: 0 auto 30px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.analyzing h3 {
+    color: var(--primary);
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.analyzing p {
+    color: var(--gray-text);
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    background: rgba(102, 126, 234, 0.2);
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 5px;
+}
+
+/* 결과 섹션 */
+.score-card {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.score-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.score-meter {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 30px;
+}
+
+.score-ring {
+    transform: rotate(-90deg);
+}
+
+.score-ring .bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 20;
+}
+
+.score-ring .progress {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 20;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.5s ease;
+}
+
+.score-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.score-display {
+    font-size: 4rem;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.score-label {
+    font-size: 1.5rem;
+    opacity: 0.9;
+    margin-bottom: 30px;
+}
+
+.score-breakdown {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 30px;
+    position: relative;
+    z-index: 1;
+}
+
+.score-item {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.score-item-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 5px;
+}
+
+.score-item-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* 피드백 카드 */
+.feedback-card {
+    padding: 20px;
+    margin: 15px 0;
+    border-radius: 15px;
+    border-left: 5px solid;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.feedback-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.feedback-card.success {
+    border-color: var(--success);
+    background: #e8f5e9;
+}
+
+.feedback-card.warning {
+    border-color: var(--warning);
+    background: #fff3e0;
+}
+
+.feedback-card.danger {
+    border-color: var(--danger);
+    background: #ffebee;
+}
+
+.feedback-card.motivation {
+    border-color: #2196f3;
+    background: #e3f2fd;
+}
+
+.feedback-title {
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.feedback-content {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 유틸리티 */
+.text-muted {
+    color: var(--gray-text);
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* 디버그 패널 */
+.debug-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #0f0;
+    padding: 10px;
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    max-width: 300px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    z-index: 9999;
+}
+
+.debug-panel.show {
+    display: block;
+}
+
+/* 로딩 */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(102, 126, 234, 0.3);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 10px;
+}
+
+/* 반응형 */
+@media (max-width: 480px) {
+    .header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .card {
+        padding: 20px;
+    }
+    
+    .score-display {
+        font-size: 3rem;
+    }
+    
+    .upload-icon {
+        font-size: 3rem;
+    }
+    
+    .upload-area {
+        padding: 30px 20px;
+    }
+    
+    .score-meter {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .score-ring .bg,
+    .score-ring .progress {
+        stroke-width: 15;
+    }
+}
+
+/* 터치 최적화 */
+@media (hover: none) {
+    .btn:active {
+        transform: scale(0.98);
+    }
+    
+    .upload-area:active {
+        transform: scale(0.98);
+    }
+}
+
+/* 프린트 스타일 */
+@media print {
+    body {
+        background: white;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .btn {
+        display: none;
+    }
+}

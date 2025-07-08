@@ -1,1244 +1,718 @@
-/* 변수 정의 */
-:root {
-    --primary: #667eea;
-    --secondary: #764ba2;
-    --success: #4caf50;
-    --warning: #ff9800;
-    --danger: #f44336;
-    --gray-text: #6c757d;
-    --card-bg: rgba(255, 255, 255, 0.95);
-    --shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}
-
-/* 전역 스타일 */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-html {
-    /* 모바일 스크롤 개선 */
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-}
-
-body {
-    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    min-height: 100vh;
-    color: #333;
-    overflow-x: hidden;
-    /* 모바일 스크롤 성능 개선 */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-/* 컨테이너 */
-.app-container {
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 20px;
-    min-height: 100vh;
-    /* 모바일 스크롤 개선 */
-    position: relative;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* 헤더 */
-.header {
-    text-align: center;
-    color: white;
-    padding: 30px 0 20px;
-    animation: fadeInDown 0.8s ease;
-}
-
-.header h1 {
-    font-size: 2.2rem;
-    font-weight: 700;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.header p {
-    font-size: 1rem;
-    opacity: 0.95;
-}
-
-/* 프라이버시 배너 */
-.privacy-banner {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px); /* Safari 지원 */
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 20px;
-    padding: 15px 20px;
-    margin: 20px 0;
-    color: white;
-    text-align: center;
-    font-size: 0.95rem;
-    animation: fadeIn 0.8s ease 0.3s both;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-}
-
-.privacy-banner .icon {
-    font-size: 1.5rem;
-}
-
-/* 단계 표시기 */
-.step-indicator {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    margin: 30px 0;
-    animation: fadeIn 0.8s ease 0.5s both;
-}
-
-.step {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    position: relative;
-    transition: all 0.3s ease;
+// 전역 변수
+let pose;
+let video;
+let canvas;
+let ctx;
+let currentFrame = 0;
+let totalFrames = 0;
+let isAnalyzing = false;
+let squatData = [];
+let debugMode = false;
+
+// DOM 요소
+const elements = {
+uploadSection: null,
+analyzingSection: null,
+resultsSection: null,
+uploadArea: null,
+videoInput: null,
+uploadedVideo: null,
+videoPreview: null,
+analyzeBtn: null,
+resetBtn: null,
+downloadBtn: null,
+progressFill: null,
+analysisStatus: null,
+frameInfo: null,
+steps: null,
+debugPanel: null
+};
+
+// 초기화
+document.addEventListener(‘DOMContentLoaded’, () => {
+initializeElements();
+setupEventListeners();
+setupPose();
+
+```
+// 디버그 모드 설정 (URL에 ?debug=true 추가시 활성화)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('debug') === 'true') {
+    debugMode = true;
+    elements.debugPanel.classList.add('show');
+}
+```
+
+});
+
+// DOM 요소 초기화
+function initializeElements() {
+elements.uploadSection = document.getElementById(‘uploadSection’);
+elements.analyzingSection = document.getElementById(‘analyzingSection’);
+elements.resultsSection = document.getElementById(‘resultsSection’);
+elements.uploadArea = document.getElementById(‘uploadArea’);
+elements.videoInput = document.getElementById(‘videoInput’);
+elements.uploadedVideo = document.getElementById(‘uploadedVideo’);
+elements.videoPreview = document.getElementById(‘videoPreview’);
+elements.analyzeBtn = document.getElementById(‘analyzeBtn’);
+elements.resetBtn = document.getElementById(‘resetBtn’);
+elements.downloadBtn = document.getElementById(‘downloadBtn’);
+elements.progressFill = document.getElementById(‘progressFill’);
+elements.analysisStatus = document.getElementById(‘analysisStatus’);
+elements.frameInfo = document.getElementById(‘frameInfo’);
+elements.steps = document.querySelectorAll(’.step’);
+elements.debugPanel = document.getElementById(‘debugPanel’);
+
+```
+canvas = document.getElementById('outputCanvas');
+ctx = canvas.getContext('2d');
+```
+
+}
+
+// 이벤트 리스너 설정
+function setupEventListeners() {
+// 업로드 영역 클릭
+elements.uploadArea.addEventListener(‘click’, () => {
+elements.videoInput.click();
+});
+
+```
+// 파일 선택
+elements.videoInput.addEventListener('change', handleFileSelect);
+
+// 드래그 앤 드롭
+elements.uploadArea.addEventListener('dragover', handleDragOver);
+elements.uploadArea.addEventListener('dragleave', handleDragLeave);
+elements.uploadArea.addEventListener('drop', handleDrop);
+
+// 버튼 이벤트
+elements.analyzeBtn.addEventListener('click', startAnalysis);
+elements.resetBtn.addEventListener('click', resetApp);
+elements.downloadBtn.addEventListener('click', downloadResults);
+```
+
+}
+
+// MediaPipe Pose 설정
+function setupPose() {
+pose = new Pose({
+locateFile: (file) => {
+return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
 }
-
-.step.active {
-    background: white;
-    color: var(--primary);
-    transform: scale(1.2);
-    box-shadow: 0 5px 20px rgba(255, 255, 255, 0.5);
-}
+});
 
-.step.completed {
-    background: var(--success);
-    color: white;
-}
+```
+pose.setOptions({
+    modelComplexity: 1,
+    smoothLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+});
 
-.step:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    width: 30px;
-    height: 2px;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-50%);
-}
-
-/* 카드 스타일 */
-.card {
-    background: var(--card-bg);
-    border-radius: 25px;
-    padding: 30px;
-    box-shadow: var(--shadow);
-    margin-bottom: 20px;
-    animation: fadeInUp 0.8s ease;
-}
-
-/* 업로드 섹션 */
-.upload-section h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: var(--primary);
-}
-
-.upload-area {
-    border: 3px dashed var(--primary);
-    border-radius: 20px;
-    padding: 40px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: rgba(102, 126, 234, 0.05);
-    /* 터치 타겟 최적화 */
-    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.2);
-    touch-action: manipulation;
-}
-
-.upload-area:hover {
-    background: rgba(102, 126, 234, 0.1);
-    transform: translateY(-2px);
-}
-
-.upload-area.dragover {
-    background: rgba(102, 126, 234, 0.2);
-    border-color: var(--secondary);
-}
-
-.upload-icon {
-    font-size: 4rem;
-    margin-bottom: 20px;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-}
-
-.upload-area p {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--primary);
-    margin-bottom: 10px;
-}
-
-.upload-area small {
-    color: var(--gray-text);
-}
+pose.onResults(onPoseResults);
+```
 
-/* 비디오 컨테이너 */
-.video-container {
-    position: relative;
-    border-radius: 20px;
-    overflow: hidden;
-    margin: 20px 0;
-    background: #000;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
-.video-container video,
-.video-container canvas {
-    width: 100%;
-    height: auto;
-    display: block;
+// 파일 선택 처리
+function handleFileSelect(e) {
+const file = e.target.files[0];
+if (file && file.type.startsWith(‘video/’)) {
+loadVideo(file);
+} else {
+showError(‘비디오 파일을 선택해주세요.’);
 }
-
-.video-container canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
 }
 
-/* 버튼 스타일 */
-.btn {
-    padding: 15px 30px;
-    border: none;
-    border-radius: 50px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    position: relative;
-    overflow: hidden;
-    /* 모바일 터치 최적화 */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
+// 드래그 오버 처리
+function handleDragOver(e) {
+e.preventDefault();
+elements.uploadArea.classList.add(‘dragover’);
 }
 
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
+// 드래그 리브 처리
+function handleDragLeave(e) {
+e.preventDefault();
+elements.uploadArea.classList.remove(‘dragover’);
 }
 
-.btn:active::before {
-    width: 300px;
-    height: 300px;
-}
+// 드롭 처리
+function handleDrop(e) {
+e.preventDefault();
+elements.uploadArea.classList.remove(‘dragover’);
 
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    color: white;
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+```
+const files = e.dataTransfer.files;
+if (files.length > 0 && files[0].type.startsWith('video/')) {
+    loadVideo(files[0]);
+} else {
+    showError('비디오 파일을 선택해주세요.');
 }
+```
 
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
 }
 
-.btn-secondary {
-    background: white;
-    color: var(--primary);
-    border: 2px solid var(--primary);
-}
+// 비디오 로드
+function loadVideo(file) {
+const url = URL.createObjectURL(file);
+elements.uploadedVideo.src = url;
 
-.btn-secondary:hover {
-    background: var(--primary);
-    color: white;
-}
+```
+elements.uploadedVideo.onloadedmetadata = () => {
+    elements.videoPreview.style.display = 'block';
+    elements.analyzeBtn.disabled = false;
+    elements.uploadArea.style.display = 'none';
+    
+    // 캔버스 크기 설정
+    canvas.width = elements.uploadedVideo.videoWidth;
+    canvas.height = elements.uploadedVideo.videoHeight;
+    
+    updateStep(1);
+};
+```
 
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
 }
 
-.button-group {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
+// 분석 시작
+async function startAnalysis() {
+if (isAnalyzing) return;
 
-/* 분석 중 */
-.analyzing {
-    text-align: center;
-    padding: 60px 20px;
-}
+```
+isAnalyzing = true;
+squatData = [];
+currentFrame = 0;
 
-.spinner {
-    width: 80px;
-    height: 80px;
-    border: 5px solid rgba(102, 126, 234, 0.3);
-    border-top: 5px solid var(--primary);
-    border-radius: 50%;
-    margin: 0 auto 30px;
-    animation: spin 1s linear infinite;
-}
+// UI 전환
+elements.uploadSection.style.display = 'none';
+elements.analyzingSection.style.display = 'block';
+updateStep(2);
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+// 비디오 재생 및 분석
+elements.uploadedVideo.currentTime = 0;
+await elements.uploadedVideo.play();
 
-.analyzing h3 {
-    color: var(--primary);
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-}
+processVideo();
+```
 
-.analyzing p {
-    color: var(--gray-text);
-    margin-bottom: 20px;
 }
 
-.progress-bar {
-    background: rgba(102, 126, 234, 0.2);
-    height: 10px;
-    border-radius: 5px;
-    overflow: hidden;
-    margin: 20px 0;
+// 비디오 프레임 처리
+async function processVideo() {
+if (!isAnalyzing || elements.uploadedVideo.ended) {
+if (elements.uploadedVideo.ended) {
+completeAnalysis();
 }
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary), var(--secondary));
-    width: 0%;
-    transition: width 0.3s ease;
-    border-radius: 5px;
+return;
 }
 
-/* 결과 섹션 */
-.score-card {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    color: white;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-}
+```
+// 캔버스에 현재 프레임 그리기
+ctx.drawImage(elements.uploadedVideo, 0, 0, canvas.width, canvas.height);
 
-.score-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    animation: rotate 20s linear infinite;
-}
+// MediaPipe로 포즈 감지
+await pose.send({ image: canvas });
 
-@keyframes rotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+// 진행률 업데이트
+const progress = (elements.uploadedVideo.currentTime / elements.uploadedVideo.duration) * 100;
+elements.progressFill.style.width = `${progress}%`;
 
-.score-meter {
-    position: relative;
-    width: 200px;
-    height: 200px;
-    margin: 0 auto 30px;
-}
+// 프레임 정보 업데이트
+currentFrame++;
+elements.frameInfo.textContent = `프레임 ${currentFrame} 처리 중...`;
 
-.score-ring {
-    transform: rotate(-90deg);
-}
+// 다음 프레임 처리
+requestAnimationFrame(processVideo);
+```
 
-.score-ring .bg {
-    fill: none;
-    stroke: rgba(255, 255, 255, 0.3);
-    stroke-width: 20;
 }
 
-.score-ring .progress {
-    fill: none;
-    stroke: #fff;
-    stroke-width: 20;
-    stroke-linecap: round;
-    transition: stroke-dashoffset 1.5s ease;
-}
+// 포즈 감지 결과 처리
+function onPoseResults(results) {
+if (!results.poseLandmarks) return;
 
-.score-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
+```
+// 스쿼트 분석 데이터 수집
+const landmarks = results.poseLandmarks;
+const squatMetrics = analyzeSquatFrame(landmarks);
 
-.score-display {
-    font-size: 4rem;
-    font-weight: 700;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+if (squatMetrics) {
+    squatData.push(squatMetrics);
 }
 
-.score-label {
-    font-size: 1.5rem;
-    opacity: 0.9;
-    margin-bottom: 30px;
+// 디버그 정보 표시
+if (debugMode) {
+    updateDebugInfo(squatMetrics);
 }
+```
 
-.score-breakdown {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    margin-top: 30px;
-    position: relative;
-    z-index: 1;
 }
 
-.score-item {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    padding: 15px;
-    border-radius: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
+// 스쿼트 프레임 분석
+function analyzeSquatFrame(landmarks) {
+// 주요 관절 좌표
+const hip = landmarks[23];
+const knee = landmarks[25];
+const ankle = landmarks[27];
+const shoulder = landmarks[11];
 
-.score-item-label {
-    font-size: 0.9rem;
-    opacity: 0.8;
-    margin-bottom: 5px;
-}
+```
+// 무릎 각도 계산
+const kneeAngle = calculateAngle(hip, knee, ankle);
 
-.score-item-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-}
+// 허리 각도 계산
+const backAngle = calculateAngle(shoulder, hip, knee);
 
-/* 피드백 카드 */
-.feedback-card {
-    padding: 20px;
-    margin: 15px 0;
-    border-radius: 15px;
-    border-left: 5px solid;
-    background: #f8f9fa;
-    transition: all 0.3s ease;
-}
+// 깊이 계산 (무릎 각도 기준)
+const depth = kneeAngle < 90 ? 'deep' : kneeAngle < 120 ? 'parallel' : 'shallow';
 
-.feedback-card:hover {
-    transform: translateX(5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
+return {
+    timestamp: elements.uploadedVideo.currentTime,
+    kneeAngle: kneeAngle,
+    backAngle: backAngle,
+    depth: depth,
+    hipY: hip.y,
+    kneeY: knee.y
+};
+```
 
-.feedback-card.success {
-    border-color: var(--success);
-    background: #e8f5e9;
 }
 
-.feedback-card.warning {
-    border-color: var(--warning);
-    background: #fff3e0;
-}
+// 각도 계산 함수
+function calculateAngle(a, b, c) {
+const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+let angle = Math.abs(radians * 180.0 / Math.PI);
 
-.feedback-card.danger {
-    border-color: var(--danger);
-    background: #ffebee;
+```
+if (angle > 180.0) {
+    angle = 360 - angle;
 }
 
-.feedback-card.motivation {
-    border-color: #2196f3;
-    background: #e3f2fd;
-}
+return angle;
+```
 
-.feedback-title {
-    font-weight: 700;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
 }
 
-.feedback-content {
-    font-size: 0.95rem;
-    line-height: 1.6;
+// 분석 완료
+function completeAnalysis() {
+isAnalyzing = false;
+elements.uploadedVideo.pause();
+
+```
+// 결과 계산
+const results = calculateResults();
+
+// UI 전환
+elements.analyzingSection.style.display = 'none';
+elements.resultsSection.style.display = 'block';
+updateStep(3);
+
+// 결과 표시
+displayResults(results);
+```
+
 }
 
-/* 애니메이션 */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+// 결과 계산
+function calculateResults() {
+const squatCount = countSquats();
+const avgDepth = calculateAverageDepth();
+const avgBackAngle = calculateAverageBackAngle();
+const consistency = calculateConsistency();
+
+```
+// 점수 계산
+const depthScore = calculateDepthScore(avgDepth);
+const postureScore = calculatePostureScore(avgBackAngle);
+const balanceScore = calculateBalanceScore();
+const speedScore = calculateSpeedScore();
+
+const totalScore = Math.round((depthScore + postureScore + balanceScore + speedScore) / 4);
+
+return {
+    squatCount,
+    totalScore,
+    depthScore,
+    postureScore,
+    balanceScore,
+    speedScore,
+    avgDepth,
+    avgBackAngle,
+    consistency
+};
+```
+
 }
+
+// 스쿼트 횟수 계산
+function countSquats() {
+let count = 0;
+let isDown = false;
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+```
+for (let i = 0; i < squatData.length; i++) {
+    if (squatData[i].kneeAngle < 120 && !isDown) {
+        isDown = true;
+    } else if (squatData[i].kneeAngle > 150 && isDown) {
+        count++;
+        isDown = false;
     }
 }
 
-@keyframes fadeInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+return count;
+```
+
 }
 
-/* 유틸리티 */
-.text-muted {
-    color: var(--gray-text);
-    font-size: 0.9rem;
-    text-align: center;
-    margin-bottom: 30px;
+// 평균 깊이 계산
+function calculateAverageDepth() {
+const deepCount = squatData.filter(d => d.depth === ‘deep’).length;
+const parallelCount = squatData.filter(d => d.depth === ‘parallel’).length;
+const shallowCount = squatData.filter(d => d.depth === ‘shallow’).length;
+
+```
+if (deepCount > parallelCount && deepCount > shallowCount) return 'deep';
+if (parallelCount > shallowCount) return 'parallel';
+return 'shallow';
+```
+
 }
 
-/* 디버그 패널 */
-.debug-panel {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    color: #0f0;
-    padding: 10px;
-    border-radius: 10px;
-    font-family: monospace;
-    font-size: 0.8rem;
-    max-width: 300px;
-    max-height: 200px;
-    overflow-y: auto;
-    display: none;
-    z-index: 9999;
+// 평균 허리 각도 계산
+function calculateAverageBackAngle() {
+const sum = squatData.reduce((acc, d) => acc + d.backAngle, 0);
+return sum / squatData.length;
 }
 
-.debug-panel.show {
-    display: block;
+// 일관성 계산
+function calculateConsistency() {
+// 무릎 각도의 표준편차 계산
+const angles = squatData.map(d => d.kneeAngle);
+const mean = angles.reduce((a, b) => a + b) / angles.length;
+const variance = angles.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / angles.length;
+const stdDev = Math.sqrt(variance);
+
+```
+// 일관성 점수 (표준편차가 낮을수록 높은 점수)
+return Math.max(0, 100 - stdDev * 2);
+```
+
 }
 
-/* 로딩 */
-.loading {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(102, 126, 234, 0.3);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    vertical-align: middle;
-    margin-right: 10px;
+// 깊이 점수 계산
+function calculateDepthScore(avgDepth) {
+switch (avgDepth) {
+case ‘deep’: return 95;
+case ‘parallel’: return 85;
+case ‘shallow’: return 65;
+default: return 70;
+}
 }
 
-/* 반응형 */
-@media (max-width: 480px) {
-    .header h1 {
-        font-size: 1.8rem;
+// 자세 점수 계산
+function calculatePostureScore(avgBackAngle) {
+// 이상적인 허리 각도: 70-110도
+if (avgBackAngle >= 70 && avgBackAngle <= 110) {
+return 90 + (10 - Math.abs(90 - avgBackAngle) / 2);
+} else {
+return Math.max(50, 90 - Math.abs(90 - avgBackAngle));
+}
+}
+
+// 균형 점수 계산
+function calculateBalanceScore() {
+// 좌우 균형 분석 (간단한 버전)
+return 85; // 실제로는 좌우 랜드마크 비교 필요
+}
+
+// 속도 점수 계산
+function calculateSpeedScore() {
+// 일정한 속도 유지 여부
+return 88; // 실제로는 각 rep의 시간 분석 필요
+}
+
+// 결과 표시
+function displayResults(results) {
+// 점수 표시
+animateScore(results.totalScore);
+document.getElementById(‘depthScore’).textContent = results.depthScore;
+document.getElementById(‘postureScore’).textContent = results.postureScore;
+document.getElementById(‘balanceScore’).textContent = results.balanceScore;
+document.getElementById(‘speedScore’).textContent = results.speedScore;
+
+```
+// 피드백 생성
+const feedback = generateFeedback(results);
+displayFeedback(feedback);
+
+// Google Sheets에 데이터 저장 시도
+saveToSheets(results);
+```
+
+}
+
+// 점수 애니메이션
+function animateScore(targetScore) {
+const scoreDisplay = document.getElementById(‘scoreDisplay’);
+const progressCircle = document.querySelector(’.score-ring .progress’);
+
+```
+let currentScore = 0;
+const increment = targetScore / 50;
+const circumference = 2 * Math.PI * 90;
+
+const animateInterval = setInterval(() => {
+    currentScore += increment;
+    if (currentScore >= targetScore) {
+        currentScore = targetScore;
+        clearInterval(animateInterval);
     }
     
-    .card {
-        padding: 20px;
-    }
+    scoreDisplay.textContent = Math.round(currentScore);
+    const offset = circumference - (currentScore / 100) * circumference;
+    progressCircle.style.strokeDashoffset = offset;
+}, 30);
+```
+
+}
+
+// 피드백 생성
+function generateFeedback(results) {
+const feedback = [];
+
+```
+// 전체 평가
+if (results.totalScore >= 90) {
+    feedback.push({
+        type: 'success',
+        title: '🏆 훌륭합니다!',
+        content: '거의 완벽한 스쿼트 자세입니다. 이 자세를 유지하세요!'
+    });
+} else if (results.totalScore >= 75) {
+    feedback.push({
+        type: 'success',
+        title: '👍 좋습니다!',
+        content: '전반적으로 좋은 스쿼트 자세입니다. 약간의 개선이 필요합니다.'
+    });
+} else {
+    feedback.push({
+        type: 'warning',
+        title: '💪 더 노력하세요!',
+        content: '자세 개선이 필요합니다. 아래 피드백을 참고하세요.'
+    });
+}
+
+// 깊이 피드백
+if (results.depthScore < 80) {
+    feedback.push({
+        type: 'warning',
+        title: '📏 깊이 개선 필요',
+        content: '스쿼트 시 엉덩이를 더 낮춰보세요. 무릎이 90도 각도가 되도록 하면 더 효과적입니다.'
+    });
+}
+
+// 자세 피드백
+if (results.postureScore < 80) {
+    feedback.push({
+        type: 'danger',
+        title: '🦴 허리 자세 주의',
+        content: '허리를 곧게 펴고 가슴을 들어올리세요. 상체가 너무 앞으로 숙여지지 않도록 주의하세요.'
+    });
+}
+
+// 균형 피드백
+if (results.balanceScore < 80) {
+    feedback.push({
+        type: 'warning',
+        title: '⚖️ 균형 개선 필요',
+        content: '양쪽 다리에 균등하게 체중을 분산시키세요. 발가락과 발뒤꿈치에 고르게 무게를 실으세요.'
+    });
+}
+
+// 속도 피드백
+if (results.speedScore < 80) {
+    feedback.push({
+        type: 'warning',
+        title: '⏱️ 속도 조절 필요',
+        content: '일정한 속도로 스쿼트를 수행하세요. 너무 빠르거나 느리지 않게 조절하세요.'
+    });
+}
+
+// 동기부여 메시지
+feedback.push({
+    type: 'motivation',
+    title: '🎯 계속 도전하세요!',
+    content: `오늘 ${results.squatCount}개의 스쿼트를 완료했습니다! 꾸준한 연습으로 더 나은 자세를 만들 수 있습니다.`
+});
+
+return feedback;
+```
+
+}
+
+// 피드백 표시
+function displayFeedback(feedbackList) {
+const container = document.getElementById(‘feedbackContainer’);
+container.innerHTML = ‘’;
+
+```
+feedbackList.forEach((feedback, index) => {
+    const card = document.createElement('div');
+    card.className = `feedback-card ${feedback.type}`;
+    card.style.animationDelay = `${index * 0.1}s`;
     
-    .score-display {
-        font-size: 3rem;
-    }
+    card.innerHTML = `
+        <div class="feedback-title">${feedback.title}</div>
+        <div class="feedback-content">${feedback.content}</div>
+    `;
     
-    .upload-icon {
-        font-size: 3rem;
-    }
-    
-    .upload-area {
-        padding: 30px 20px;
-    }
-    
-    .score-meter {
-        width: 150px;
-        height: 150px;
-    }
-    
-    .score-ring .bg,
-    .score-ring .progress {
-        stroke-width: 15;
-    }
-    
-    /* 모바일 버튼 크기 증가 */
-    .btn {
-        padding: 18px 35px;
-        font-size: 1.1rem;
-    }
-}
-
-/* 터치 최적화 */
-@media (hover: none) {
-    .btn:active {
-        transform: scale(0.98);
-    }
-    
-    .upload-area:active {
-        transform: scale(0.98);
-    }
-    
-    /* 모바일에서 호버 효과 제거 */
-    .feedback-card:hover {
-        transform: none;
-    }
-    
-    .btn-primary:hover {
-        transform: none;
-    }
-}
-
-/* iOS 모바일 최적화 */
-@supports (-webkit-touch-callout: none) {
-    /* iOS에서 버튼 스타일 최적화 */
-    .btn {
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-    }
-    
-    /* iOS 스크롤 바운스 방지 */
-    .app-container {
-        -webkit-overflow-scrolling: touch;
-    }
-}
-
-/* 프린트 스타일 */
-@media print {
-    body {
-        background: white;
-    }
-    
-    .card {
-        box-shadow: none;
-        border: 1px solid #ddd;
-    }
-    
-    .btn {
-        display: none;
-    }
-}/* 변수 정의 */
-:root {
-    --primary: #667eea;
-    --secondary: #764ba2;
-    --success: #4caf50;
-    --warning: #ff9800;
-    --danger: #f44336;
-    --gray-text: #6c757d;
-    --card-bg: rgba(255, 255, 255, 0.95);
-    --shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}
-
-/* 전역 스타일 */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    min-height: 100vh;
-    color: #333;
-    overflow-x: hidden;
-}
-
-/* 컨테이너 */
-.app-container {
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 20px;
-    min-height: 100vh;
-}
-
-/* 헤더 */
-.header {
-    text-align: center;
-    color: white;
-    padding: 30px 0 20px;
-    animation: fadeInDown 0.8s ease;
-}
-
-.header h1 {
-    font-size: 2.2rem;
-    font-weight: 700;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.header p {
-    font-size: 1rem;
-    opacity: 0.95;
-}
-
-/* 프라이버시 배너 */
-.privacy-banner {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 20px;
-    padding: 15px 20px;
-    margin: 20px 0;
-    color: white;
-    text-align: center;
-    font-size: 0.95rem;
-    animation: fadeIn 0.8s ease 0.3s both;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-}
-
-.privacy-banner .icon {
-    font-size: 1.5rem;
-}
-
-/* 단계 표시기 */
-.step-indicator {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    margin: 30px 0;
-    animation: fadeIn 0.8s ease 0.5s both;
-}
-
-.step {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    position: relative;
-    transition: all 0.3s ease;
-}
-
-.step.active {
-    background: white;
-    color: var(--primary);
-    transform: scale(1.2);
-    box-shadow: 0 5px 20px rgba(255, 255, 255, 0.5);
-}
-
-.step.completed {
-    background: var(--success);
-    color: white;
-}
-
-.step:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    width: 30px;
-    height: 2px;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-50%);
-}
-
-/* 카드 스타일 */
-.card {
-    background: var(--card-bg);
-    border-radius: 25px;
-    padding: 30px;
-    box-shadow: var(--shadow);
-    margin-bottom: 20px;
-    animation: fadeInUp 0.8s ease;
-}
-
-/* 업로드 섹션 */
-.upload-section h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: var(--primary);
-}
-
-.upload-area {
-    border: 3px dashed var(--primary);
-    border-radius: 20px;
-    padding: 40px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: rgba(102, 126, 234, 0.05);
-}
-
-.upload-area:hover {
-    background: rgba(102, 126, 234, 0.1);
-    transform: translateY(-2px);
-}
-
-.upload-area.dragover {
-    background: rgba(102, 126, 234, 0.2);
-    border-color: var(--secondary);
-}
-
-.upload-icon {
-    font-size: 4rem;
-    margin-bottom: 20px;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-}
-
-.upload-area p {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--primary);
-    margin-bottom: 10px;
-}
-
-.upload-area small {
-    color: var(--gray-text);
-}
-
-/* 비디오 컨테이너 */
-.video-container {
-    position: relative;
-    border-radius: 20px;
-    overflow: hidden;
-    margin: 20px 0;
-    background: #000;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.video-container video,
-.video-container canvas {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-
-.video-container canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-
-/* 버튼 스타일 */
-.btn {
-    padding: 15px 30px;
-    border: none;
-    border-radius: 50px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    position: relative;
-    overflow: hidden;
-}
-
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-}
-
-.btn:active::before {
-    width: 300px;
-    height: 300px;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    color: white;
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
-}
-
-.btn-secondary {
-    background: white;
-    color: var(--primary);
-    border: 2px solid var(--primary);
-}
+    container.appendChild(card);
+});
+```
+
+}
+
+// Google Sheets에 저장
+async function saveToSheets(results) {
+try {
+await google.script.run.withSuccessHandler(() => {
+console.log(‘데이터 저장 성공’);
+}).withFailureHandler((error) => {
+console.error(‘데이터 저장 실패:’, error);
+}).logSquatData(results);
+} catch (error) {
+console.error(‘Sheets 저장 오류:’, error);
+}
+}
+
+// 결과 다운로드
+function downloadResults() {
+// 결과 캔버스 생성
+const resultCanvas = document.createElement(‘canvas’);
+const resultCtx = resultCanvas.getContext(‘2d’);
+resultCanvas.width = 800;
+resultCanvas.height = 600;
+
+```
+// 배경
+const gradient = resultCtx.createLinearGradient(0, 0, 800, 600);
+gradient.addColorStop(0, '#667eea');
+gradient.addColorStop(1, '#764ba2');
+resultCtx.fillStyle = gradient;
+resultCtx.fillRect(0, 0, 800, 600);
+
+// 제목
+resultCtx.fillStyle = 'white';
+resultCtx.font = 'bold 48px Noto Sans KR';
+resultCtx.textAlign = 'center';
+resultCtx.fillText('AI 스쿼트 분석 결과', 400, 80);
+
+// 점수
+const score = document.getElementById('scoreDisplay').textContent;
+resultCtx.font = 'bold 120px Noto Sans KR';
+resultCtx.fillText(score, 400, 250);
+
+resultCtx.font = '24px Noto Sans KR';
+resultCtx.fillText('종합 점수', 400, 300);
+
+// 세부 점수
+resultCtx.font = '20px Noto Sans KR';
+resultCtx.textAlign = 'left';
+
+const scores = [
+    { label: '깊이', value: document.getElementById('depthScore').textContent },
+    { label: '자세', value: document.getElementById('postureScore').textContent },
+    { label: '균형', value: document.getElementById('balanceScore').textContent },
+    { label: '속도', value: document.getElementById('speedScore').textContent }
+];
+
+scores.forEach((item, index) => {
+    const y = 380 + index * 40;
+    resultCtx.fillText(`${item.label}: ${item.value}점`, 250, y);
+});
+
+// 날짜
+resultCtx.textAlign = 'center';
+resultCtx.font = '16px Noto Sans KR';
+resultCtx.fillText(new Date().toLocaleDateString('ko-KR'), 400, 560);
+
+// 다운로드
+resultCanvas.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `squat-analysis-${Date.now()}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+});
+```
+
+}
+
+// 앱 초기화
+function resetApp() {
+// 변수 초기화
+isAnalyzing = false;
+squatData = [];
+currentFrame = 0;
+
+```
+// UI 초기화
+elements.uploadSection.style.display = 'block';
+elements.analyzingSection.style.display = 'none';
+elements.resultsSection.style.display = 'none';
+elements.videoPreview.style.display = 'none';
+elements.uploadArea.style.display = 'block';
+elements.analyzeBtn.disabled = true;
+elements.progressFill.style.width = '0%';
+
+// 비디오 초기화
+elements.uploadedVideo.src = '';
+elements.videoInput.value = '';
 
-.btn-secondary:hover {
-    background: var(--primary);
-    color: white;
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
-}
-
-.button-group {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-/* 분석 중 */
-.analyzing {
-    text-align: center;
-    padding: 60px 20px;
-}
-
-.spinner {
-    width: 80px;
-    height: 80px;
-    border: 5px solid rgba(102, 126, 234, 0.3);
-    border-top: 5px solid var(--primary);
-    border-radius: 50%;
-    margin: 0 auto 30px;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.analyzing h3 {
-    color: var(--primary);
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-}
-
-.analyzing p {
-    color: var(--gray-text);
-    margin-bottom: 20px;
-}
-
-.progress-bar {
-    background: rgba(102, 126, 234, 0.2);
-    height: 10px;
-    border-radius: 5px;
-    overflow: hidden;
-    margin: 20px 0;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary), var(--secondary));
-    width: 0%;
-    transition: width 0.3s ease;
-    border-radius: 5px;
-}
-
-/* 결과 섹션 */
-.score-card {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    color: white;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-}
-
-.score-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    animation: rotate 20s linear infinite;
-}
-
-@keyframes rotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.score-meter {
-    position: relative;
-    width: 200px;
-    height: 200px;
-    margin: 0 auto 30px;
-}
-
-.score-ring {
-    transform: rotate(-90deg);
-}
-
-.score-ring .bg {
-    fill: none;
-    stroke: rgba(255, 255, 255, 0.3);
-    stroke-width: 20;
-}
-
-.score-ring .progress {
-    fill: none;
-    stroke: #fff;
-    stroke-width: 20;
-    stroke-linecap: round;
-    transition: stroke-dashoffset 1.5s ease;
-}
-
-.score-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
+// 단계 초기화
+updateStep(1);
+```
 
-.score-display {
-    font-size: 4rem;
-    font-weight: 700;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.score-label {
-    font-size: 1.5rem;
-    opacity: 0.9;
-    margin-bottom: 30px;
+// 단계 업데이트
+function updateStep(step) {
+elements.steps.forEach((el, index) => {
+if (index < step - 1) {
+el.classList.add(‘completed’);
+el.classList.remove(‘active’);
+} else if (index === step - 1) {
+el.classList.add(‘active’);
+el.classList.remove(‘completed’);
+} else {
+el.classList.remove(‘active’, ‘completed’);
 }
-
-.score-breakdown {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    margin-top: 30px;
-    position: relative;
-    z-index: 1;
-}
-
-.score-item {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    padding: 15px;
-    border-radius: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.score-item-label {
-    font-size: 0.9rem;
-    opacity: 0.8;
-    margin-bottom: 5px;
-}
-
-.score-item-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-}
-
-/* 피드백 카드 */
-.feedback-card {
-    padding: 20px;
-    margin: 15px 0;
-    border-radius: 15px;
-    border-left: 5px solid;
-    background: #f8f9fa;
-    transition: all 0.3s ease;
-}
-
-.feedback-card:hover {
-    transform: translateX(5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.feedback-card.success {
-    border-color: var(--success);
-    background: #e8f5e9;
-}
-
-.feedback-card.warning {
-    border-color: var(--warning);
-    background: #fff3e0;
-}
-
-.feedback-card.danger {
-    border-color: var(--danger);
-    background: #ffebee;
+});
 }
 
-.feedback-card.motivation {
-    border-color: #2196f3;
-    background: #e3f2fd;
-}
-
-.feedback-title {
-    font-weight: 700;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.feedback-content {
-    font-size: 0.95rem;
-    line-height: 1.6;
-}
-
-/* 애니메이션 */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+// 디버그 정보 업데이트
+function updateDebugInfo(metrics) {
+if (!debugMode || !metrics) return;
 
-@keyframes fadeInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* 유틸리티 */
-.text-muted {
-    color: var(--gray-text);
-    font-size: 0.9rem;
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-/* 디버그 패널 */
-.debug-panel {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    color: #0f0;
-    padding: 10px;
-    border-radius: 10px;
-    font-family: monospace;
-    font-size: 0.8rem;
-    max-width: 300px;
-    max-height: 200px;
-    overflow-y: auto;
-    display: none;
-    z-index: 9999;
-}
-
-.debug-panel.show {
-    display: block;
-}
+```
+const info = `
+```
 
-/* 로딩 */
-.loading {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(102, 126, 234, 0.3);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    vertical-align: middle;
-    margin-right: 10px;
-}
+Frame: ${currentFrame}
+Knee Angle: ${metrics.kneeAngle.toFixed(1)}°
+Back Angle: ${metrics.backAngle.toFixed(1)}°
+Depth: ${metrics.depth}
+Time: ${metrics.timestamp.toFixed(2)}s
+`;
 
-/* 반응형 */
-@media (max-width: 480px) {
-    .header h1 {
-        font-size: 1.8rem;
-    }
-    
-    .card {
-        padding: 20px;
-    }
-    
-    .score-display {
-        font-size: 3rem;
-    }
-    
-    .upload-icon {
-        font-size: 3rem;
-    }
-    
-    .upload-area {
-        padding: 30px 20px;
-    }
-    
-    .score-meter {
-        width: 150px;
-        height: 150px;
-    }
-    
-    .score-ring .bg,
-    .score-ring .progress {
-        stroke-width: 15;
-    }
-}
+```
+elements.debugPanel.textContent = info;
+```
 
-/* 터치 최적화 */
-@media (hover: none) {
-    .btn:active {
-        transform: scale(0.98);
-    }
-    
-    .upload-area:active {
-        transform: scale(0.98);
-    }
 }
 
-/* 프린트 스타일 */
-@media print {
-    body {
-        background: white;
-    }
-    
-    .card {
-        box-shadow: none;
-        border: 1px solid #ddd;
-    }
-    
-    .btn {
-        display: none;
-    }
+// 에러 표시
+function showError(message) {
+alert(message); // 실제로는 더 나은 UI 사용
 }

@@ -67,6 +67,16 @@ function initializeElements() {
     ctx = canvas.getContext('2d');
 }
 
+// 단계 표시 업데이트 함수
+function updateStep(currentStepNumber) {
+    elements.steps.forEach(step => {
+        step.classList.remove('active');
+        if (parseInt(step.dataset.step) === currentStepNumber) {
+            step.classList.add('active');
+        }
+    });
+}
+
 // 이벤트 리스너 설정
 function setupEventListeners() {
     // 업로드 영역 클릭
@@ -806,4 +816,15 @@ function downloadResults() {
             showSuccessMessage('결과가 다운로드되었습니다!');
         });
     }
+}
+// 오류 메시지 표시 함수
+function showError(message) {
+    console.error('오류:', message);
+    alert(`오류가 발생했습니다: ${message}`);
+}
+
+// 성공 메시지 표시 함수
+function showSuccessMessage(message) {
+    console.log('성공:', message);
+    alert(message);
 }

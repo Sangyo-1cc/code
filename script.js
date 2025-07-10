@@ -140,6 +140,8 @@ function resetApp() {
     updateStep(1);
 }
 
+
+
 // 파일 선택 처리
 function handleFileSelect(e) {
     const file = e.target.files[0];

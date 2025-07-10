@@ -84,8 +84,8 @@ function setupEventListeners() {
     
     // 버튼 이벤트
     elements.analyzeBtn.addEventListener('click', startAnalysis);
-    elements.resetBtn.addEventListener('click', resetApp);
-    elements.downloadBtn.addEventListener('click', downloadResults);
+    elements.resetBtn.addEventListener('click', () => resetApp());
+    elements.downloadBtn.addEventListener('click', () => downloadResults());
 }
 
 // MediaPipe Pose 설정
@@ -104,6 +104,38 @@ function setupPose() {
     });
     
     pose.onResults(onPoseResults);
+}
+
+// 앱 초기화
+function resetApp() {
+    // 변수 초기화
+    isAnalyzing = false;
+    squatData = [];
+    currentFrame = 0;
+    frameSkip = 0;
+    noSquatFrames = 0;
+    
+    // 타임아웃 클리어
+    if (analysisTimeout) {
+        clearTimeout(analysisTimeout);
+        analysisTimeout = null;
+    }
+    
+    // UI 초기화
+    elements.uploadSection.style.display = 'block';
+    elements.analyzingSection.style.display = 'none';
+    elements.resultsSection.style.display = 'none';
+    elements.videoPreview.style.display = 'none';
+    elements.uploadArea.style.display = 'block';
+    elements.analyzeBtn.disabled = true;
+    elements.progressFill.style.width = '0%';
+    
+    // 비디오 초기화
+    elements.uploadedVideo.src = '';
+    elements.videoInput.value = '';
+    
+    // 단계 초기화
+    updateStep(1);
 }
 
 // 파일 선택 처리

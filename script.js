@@ -97,10 +97,12 @@ function setupPose() {
     });
     
     pose.setOptions({
-        modelComplexity: 1,
+        modelComplexity: 0, // 0으로 변경하여 성능 향상
         smoothLandmarks: true,
         minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
+        minTrackingConfidence: 0.5,
+        enableSegmentation: false, // 불필요한 기능 비활성화
+        smoothSegmentation: false
     });
     
     pose.onResults(onPoseResults);
@@ -244,15 +246,30 @@ async function startAnalysis() {
     // 비디오 재생 및 분석
     elements.uploadedVideo.currentTime = 0;
     elements.uploadedVideo.playbackRate = 1.0;
-    await elements.uploadedVideo.play();
     
-    // 분석 타임아웃 설정 (최대 60초)
+    // 비디오 재생 시작
+    try {
+        await elements.uploadedVideo.play();
+    } catch (error) {
+        console.error('비디오 재생 오류:', error);
+        showError('비디오를 재생할 수 없습니다. 다른 영상을 사용해주세요.');
+        return;
+    }
+    
+    // 분석 타임아웃 설정 (영상 길이에 따라 동적으로 설정)
+    const timeoutDuration = Math.max(60000, elements.uploadedVideo.duration * 3000); // 최소 60초, 영상 길이의 3배
     analysisTimeout = setTimeout(() => {
         if (isAnalyzing) {
             showError('분석 시간이 초과되었습니다. 더 짧은 영상을 사용해주세요.');
             completeAnalysis();
         }
-    }, 60000);
+    }, timeoutDuration);
+    
+    // 디버그 로그
+    console.log('분석 시작:', {
+        duration: elements.uploadedVideo.duration,
+        timeout: timeoutDuration / 1000 + '초'
+    });
     
     processVideo();
 }
@@ -266,9 +283,9 @@ async function processVideo() {
         return;
     }
     
-    // 프레임 스킵 (3프레임마다 1번만 처리)
+    // 프레임 스킵 (2프레임마다 1번 처리로 변경 - 성능 개선)
     frameSkip++;
-    if (frameSkip % 3 !== 0) {
+    if (frameSkip % 2 !== 0) {
         requestAnimationFrame(processVideo);
         return;
     }
@@ -276,8 +293,12 @@ async function processVideo() {
     // 캔버스에 현재 프레임 그리기
     ctx.drawImage(elements.uploadedVideo, 0, 0, canvas.width, canvas.height);
     
-    // MediaPipe로 포즈 감지
-    await pose.send({ image: canvas });
+    // MediaPipe로 포즈 감지 (비동기 처리 개선)
+    try {
+        pose.send({ image: canvas });
+    } catch (error) {
+        console.error('포즈 감지 오류:', error);
+    }
     
     // 진행률 업데이트
     const progress = (elements.uploadedVideo.currentTime / elements.uploadedVideo.duration) * 100;
@@ -285,10 +306,12 @@ async function processVideo() {
     
     // 프레임 정보 업데이트
     currentFrame++;
-    elements.frameInfo.textContent = `프레임 ${currentFrame} 처리 중...`;
+    elements.frameInfo.textContent = `프레임 ${currentFrame} 처리 중... (${Math.round(progress)}%)`;
     
-    // 스쿼트 감지 실패 체크
-    if (noSquatFrames > 100) {
+    // 스쿼트 감지 실패 체크 (임계값 조정)
+    // 프레임 스킵을 고려하여 실제 시간 기반으로 체크
+    const elapsedTime = elements.uploadedVideo.currentTime;
+    if (noSquatFrames > 150 && elapsedTime > 5) { // 5초 이상 경과 후 체크
         showError('스쿼트 동작을 감지할 수 없습니다. 측면에서 촬영한 스쿼트 영상을 사용해주세요.');
         completeAnalysis();
         return;
@@ -300,6 +323,8 @@ async function processVideo() {
 
 // 포즈 감지 결과 처리
 function onPoseResults(results) {
+    if (!isAnalyzing) return; // 분석 중이 아니면 무시
+    
     if (!results.poseLandmarks) {
         noSquatFrames++;
         return;
@@ -311,7 +336,12 @@ function onPoseResults(results) {
     
     if (squatMetrics && squatMetrics.kneeAngle) {
         squatData.push(squatMetrics);
-        noSquatFrames = 0;
+        noSquatFrames = 0; // 스쿼트 감지 성공 시 리셋
+        
+        // 성공적인 감지 시 상태 업데이트
+        if (squatData.length % 10 === 0) { // 10프레임마다 상태 업데이트
+            elements.analysisStatus.textContent = `${squatData.length}개의 프레임 분석 완료...`;
+        }
     } else {
         noSquatFrames++;
     }

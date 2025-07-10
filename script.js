@@ -95,7 +95,7 @@ function setupEventListeners() {
     // 버튼 이벤트
     elements.analyzeBtn.addEventListener('click', startAnalysis);
     elements.resetBtn.addEventListener('click', () => resetApp());
-    elements.downloadBtn.addEventListener('click', () => downloadResults());
+    elements.downloadBtn.addEventListener('click', () => ());
 }
 
 // MediaPipe Pose 설정
@@ -699,122 +699,101 @@ async function saveToSheets(results) {
     }
 }
 
-// 결과 다운로드
-function downloadResults() {
-    // 결과 캔버스 생성
-    const resultCanvas = document.createElement('canvas');
-    const resultCtx = resultCanvas.getContext('2d');
-    resultCanvas.width = 800;
-    resultCanvas.height = 600;
-    
-    // 배경
-    const gradient = resultCtx.createLinearGradient(0, 0, 800, 600);
-    gradient.addColorStop(0, '#667eea');
-    gradient.addColorStop(1, '#764ba2');
-    resultCtx.fillStyle = gradient;
-    resultCtx.fillRect(0, 0, 800, 600);
-    
-    // 제목
-    resultCtx.fillStyle = 'white';
-    resultCtx.font = 'bold 48px Noto Sans KR';
-    resultCtx.textAlign = 'center';
-    resultCtx.fillText('AI 스쿼트 분석 결과', 400, 80);
-    
-    // 인스타그램 주소
-    resultCtx.font = '20px Noto Sans KR';
-    resultCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    resultCtx.fillText('@1cc_my_sweat', 400, 120);
-    
-    // 점수
-    const score = document.getElementById('scoreDisplay').textContent;
-    resultCtx.font = 'bold 120px Noto Sans KR';
-    resultCtx.fillStyle = 'white';
-    resultCtx.fillText(score, 400, 270);
-    
-    resultCtx.font = '24px Noto Sans KR';
-    resultCtx.fillText('종합 점수', 400, 320);
-    
-    // 세부 점수
-    resultCtx.font = '20px Noto Sans KR';
-    resultCtx.textAlign = 'left';
-    
-    const scores = [
-        { label: '깊이', value: document.getElementById('depthScore').textContent },
-        { label: '자세', value: document.getElementById('postureScore').textContent },
-        { label: '균형', value: document.getElementById('balanceScore').textContent },
-        { label: '속도', value: document.getElementById('speedScore').textContent }
-    ];
-    
-    scores.forEach((item, index) => {
-        const y = 400 + index * 40;
-        resultCtx.fillText(`${item.label}: ${item.value}점`, 250, y);
-    });
-    
-    // 날짜
-    resultCtx.textAlign = 'center';
-    resultCtx.font = '16px Noto Sans KR';
-    resultCtx.fillText(new Date().toLocaleDateString('ko-KR'), 400, 560);
-    
-    // 모바일 환경 체크
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-        // 모바일: 이미지를 새 창에서 열어 저장하기 쉽게 함
-        resultCanvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            
-            // 새 창에서 이미지 열기
-            const newWindow = window.open('', '_blank');
-            if (newWindow) {
-                newWindow.document.write(`
-                    <html>
-                        <head>
-                            <title>AI 스쿼트 분석 결과</title>
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <style>
-                                body { 
-                                    margin: 0; 
-                                    padding: 20px;
-                                    background: #f0f0f0;
-                                    text-align: center;
-                                }
-                                img { 
-                                    max-width: 100%; 
-                                    height: auto;
-                                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                                    border-radius: 10px;
-                                }
-                                p {
-                                    margin: 20px 0;
-                                    font-family: 'Noto Sans KR', sans-serif;
-                                    color: #667eea;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <p>📸 이미지를 길게 눌러 저장하세요</p>
-                            <img src="${url}" alt="AI 스쿼트 분석 결과">
-                            <p>결과를 공유해보세요! @1cc_my_sweat</p>
-                        </body>
-                    </html>
-                `);
-            }
-            
-            // 피드백 메시지
-            showSuccessMessage('결과 이미지가 새 창에서 열렸습니다. 이미지를 길게 눌러 저장하세요!');
+// 결과 다운로드 (<< 이 함수 전체를 교체해주세요!)
+async function downloadResults() {
+    try {
+        // 1. 분석 데이터에서 최고의 순간(가장 깊은 스쿼트) 찾기
+        if (!squatData || squatData.length === 0) {
+            showError('분석 데이터가 없어 이미지를 생성할 수 없습니다.');
+            return;
+        }
+
+        // 무릎 각도가 가장 낮은 프레임을 '최고의 순간'으로 선정
+        const bestFrame = squatData.reduce((prev, current) => {
+            return (prev.kneeAngle < current.kneeAngle) ? prev : current;
         });
-    } else {
-        // 데스크톱: 기존 다운로드 방식
-        resultCanvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `squat-analysis-${Date.now()}.png`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            showSuccessMessage('결과가 다운로드되었습니다!');
+
+        // 2. 스토리 형식의 캔버스 준비 (1080x1920 비율)
+        const storyCanvas = document.createElement('canvas');
+        const storyCtx = storyCanvas.getContext('2d');
+        const storyWidth = 1080;
+        const storyHeight = 1920;
+        storyCanvas.width = storyWidth;
+        storyCanvas.height = storyHeight;
+
+        // 3. '최고의 순간' 비디오 프레임 캡처
+        const video = elements.uploadedVideo;
+        video.currentTime = bestFrame.timestamp;
+
+        // 'seeked' 이벤트를 기다려 정확한 프레임 캡처
+        await new Promise((resolve, reject) => {
+            const seekTimeout = setTimeout(() => reject(new Error('비디오 프레임 탐색 시간 초과')), 3000);
+            video.addEventListener('seeked', () => {
+                clearTimeout(seekTimeout);
+                // 캔버스에 비디오 프레임 그리기
+                const videoAspectRatio = video.videoWidth / video.videoHeight;
+                const outputWidth = storyWidth;
+                const outputHeight = outputWidth / videoAspectRatio;
+                const yPos = (storyHeight - outputHeight) / 2.5; // 이미지 위치를 살짝 위로 조정
+
+                storyCtx.drawImage(video, 0, yPos, outputWidth, outputHeight);
+                resolve();
+            }, { once: true });
         });
+
+        // 4. 디자인 요소 추가 (그라데이션, 텍스트 등)
+        // 어두운 그라데이션 오버레이로 텍스트 가독성 확보
+        const gradient = storyCtx.createLinearGradient(0, 0, 0, storyHeight);
+        gradient.addColorStop(0, 'rgba(0,0,0,0.6)');
+        gradient.addColorStop(0.5, 'rgba(0,0,0,0.2)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
+        storyCtx.fillStyle = gradient;
+        storyCtx.fillRect(0, 0, storyWidth, storyHeight);
+
+        // 텍스트 스타일 설정
+        storyCtx.textAlign = 'center';
+        storyCtx.fillStyle = 'white';
+        storyCtx.shadowColor = 'rgba(0,0,0,0.7)';
+        storyCtx.shadowBlur = 10;
+
+        // (1) 상단 타이틀
+        storyCtx.font = 'bold 120px "Noto Sans KR", sans-serif';
+        storyCtx.fillText('✨ 최고의 순간 ✨', storyWidth / 2, 300);
+
+        // (2) 인스타그램 주소 (요청사항 반영)
+        storyCtx.font = '50px "Noto Sans KR", sans-serif';
+        storyCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        storyCtx.fillText('@1cc_my_sweat', storyWidth / 2, 400);
+
+        // (3) 종합 점수
+        const score = document.getElementById('scoreDisplay').textContent;
+        storyCtx.font = 'bold 300px "Noto Sans KR", sans-serif';
+        storyCtx.fillStyle = '#FFC107'; // 강조색
+        storyCtx.textBaseline = 'middle';
+        storyCtx.fillText(score, storyWidth / 2, storyHeight / 2 + 300);
+
+        // (4) "/100" 텍스트
+        storyCtx.font = '80px "Noto Sans KR", sans-serif';
+        storyCtx.fillStyle = 'white';
+        storyCtx.textBaseline = 'alphabetic'; // 기준선 조정
+        storyCtx.fillText('/100', storyWidth / 2 + 250, storyHeight / 2 + 340);
+        
+        // (5) 하단 메시지
+        storyCtx.font = '55px "Noto Sans KR", sans-serif';
+        storyCtx.fillText('AI 스쿼트 분석 완료!', storyWidth / 2, storyHeight - 200);
+
+        // 5. 최종 이미지 다운로드
+        const dataURL = storyCanvas.toDataURL('image/jpeg', 0.9);
+        const a = document.createElement('a');
+        a.href = dataURL;
+        a.download = `squat_story_${Date.now()}.jpg`;
+        a.click();
+        
+        showSuccessMessage('결과 이미지를 다운로드했습니다!');
+
+    } catch (error) {
+        console.error('결과 이미지 생성 실패:', error);
+        showError('결과 이미지를 생성하는 중 오류가 발생했습니다.');
     }
 }
 // 오류 메시지 표시 함수

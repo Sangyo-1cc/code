@@ -343,6 +343,26 @@ line-height: 1.5;
 min-height: 24px;
 }
 
+/* 홍보 배너 */
+.promo-banner {
+margin-top: 40px;
+padding: 20px;
+background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+border-radius: 15px;
+border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.promo-banner p {
+margin: 5px 0;
+color: var(–primary);
+font-weight: 500;
+}
+
+.promo-banner p:first-child {
+font-size: 1.1rem;
+font-weight: 700;
+}
+
 .progress-bar {
 background: rgba(102, 126, 234, 0.2);
 height: 10px;
@@ -613,6 +633,20 @@ font-size: 1.8rem;
 .btn {
     padding: 18px 35px;
     font-size: 1.1rem;
+}
+
+/* 홍보 배너 모바일 스타일 */
+.promo-banner {
+    padding: 15px;
+    margin-top: 30px;
+}
+
+.promo-banner p {
+    font-size: 0.95rem;
+}
+
+.promo-banner p:first-child {
+    font-size: 1rem;
 }
 ```
 

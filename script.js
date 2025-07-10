@@ -217,6 +217,17 @@ elements.uploadSection.style.display = 'none';
 elements.analyzingSection.style.display = 'block';
 updateStep(2);
 
+// 홍보 배너 추가 (없으면)
+if (!elements.analyzingSection.querySelector('.promo-banner')) {
+    const promoBanner = document.createElement('div');
+    promoBanner.className = 'promo-banner';
+    promoBanner.innerHTML = `
+        <p>📍 분당선 오리역 1ccBANG</p>
+        <p>운동하고 영상찍는 신개념 휴식공간</p>
+    `;
+    elements.analyzingSection.appendChild(promoBanner);
+}
+
 // 비디오 재생 및 분석
 elements.uploadedVideo.currentTime = 0;
 elements.uploadedVideo.playbackRate = 1.0; // 재생 속도 정상화
@@ -530,6 +541,10 @@ document.getElementById(‘speedScore’).textContent = results.speedScore;
 const feedback = generateFeedback(results);
 displayFeedback(feedback);
 
+// 모바일 환경에 따라 버튼 텍스트 변경
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+elements.downloadBtn.textContent = isMobile ? '결과 이미지 저장하기' : '결과 이미지 다운로드';
+
 // Google Sheets에 데이터 저장 시도
 saveToSheets(results);
 ```
@@ -692,13 +707,19 @@ resultCtx.font = 'bold 48px Noto Sans KR';
 resultCtx.textAlign = 'center';
 resultCtx.fillText('AI 스쿼트 분석 결과', 400, 80);
 
+// 인스타그램 주소
+resultCtx.font = '20px Noto Sans KR';
+resultCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+resultCtx.fillText('@1cc_my_sweat', 400, 120);
+
 // 점수
 const score = document.getElementById('scoreDisplay').textContent;
 resultCtx.font = 'bold 120px Noto Sans KR';
-resultCtx.fillText(score, 400, 250);
+resultCtx.fillStyle = 'white';
+resultCtx.fillText(score, 400, 270);
 
 resultCtx.font = '24px Noto Sans KR';
-resultCtx.fillText('종합 점수', 400, 300);
+resultCtx.fillText('종합 점수', 400, 320);
 
 // 세부 점수
 resultCtx.font = '20px Noto Sans KR';
@@ -712,7 +733,7 @@ const scores = [
 ];
 
 scores.forEach((item, index) => {
-    const y = 380 + index * 40;
+    const y = 400 + index * 40;
     resultCtx.fillText(`${item.label}: ${item.value}점`, 250, y);
 });
 
@@ -721,15 +742,67 @@ resultCtx.textAlign = 'center';
 resultCtx.font = '16px Noto Sans KR';
 resultCtx.fillText(new Date().toLocaleDateString('ko-KR'), 400, 560);
 
-// 다운로드
-resultCanvas.toBlob((blob) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `squat-analysis-${Date.now()}.png`;
-    a.click();
-    URL.revokeObjectURL(url);
-});
+// 모바일 환경 체크
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+if (isMobile) {
+    // 모바일: 이미지를 새 창에서 열어 저장하기 쉽게 함
+    resultCanvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        
+        // 새 창에서 이미지 열기
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+            newWindow.document.write(`
+                <html>
+                    <head>
+                        <title>AI 스쿼트 분석 결과</title>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body { 
+                                margin: 0; 
+                                padding: 20px;
+                                background: #f0f0f0;
+                                text-align: center;
+                            }
+                            img { 
+                                max-width: 100%; 
+                                height: auto;
+                                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                                border-radius: 10px;
+                            }
+                            p {
+                                margin: 20px 0;
+                                font-family: 'Noto Sans KR', sans-serif;
+                                color: #667eea;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <p>📸 이미지를 길게 눌러 저장하세요</p>
+                        <img src="${url}" alt="AI 스쿼트 분석 결과">
+                        <p>결과를 공유해보세요! @1cc_my_sweat</p>
+                    </body>
+                </html>
+            `);
+        }
+        
+        // 피드백 메시지
+        showSuccessMessage('결과 이미지가 새 창에서 열렸습니다. 이미지를 길게 눌러 저장하세요!');
+    });
+} else {
+    // 데스크톱: 기존 다운로드 방식
+    resultCanvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `squat-analysis-${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showSuccessMessage('결과가 다운로드되었습니다!');
+    });
+}
 ```
 
 }
@@ -820,6 +893,35 @@ elements.analysisStatus.innerHTML = `<span style="color: #f44336;">⚠️ ${mess
 // 3초 후 리셋
 setTimeout(() => {
     resetApp();
+}, 3000);
+```
+
+}
+
+// 성공 메시지 표시
+function showSuccessMessage(message) {
+// 임시 메시지 요소 생성
+const messageEl = document.createElement(‘div’);
+messageEl.style.cssText = `position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #4caf50; color: white; padding: 15px 30px; border-radius: 30px; box-shadow: 0 5px 20px rgba(76, 175, 80, 0.3); font-weight: 500; z-index: 10000; animation: slideUp 0.3s ease;`;
+messageEl.textContent = message;
+
+```
+// 애니메이션 스타일 추가
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideUp {
+        from { transform: translate(-50%, 100px); opacity: 0; }
+        to { transform: translate(-50%, 0); opacity: 1; }
+    }
+`;
+document.head.appendChild(style);
+
+document.body.appendChild(messageEl);
+
+// 3초 후 제거
+setTimeout(() => {
+    messageEl.remove();
+    style.remove();
 }, 3000);
 ```
 

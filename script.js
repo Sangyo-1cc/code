@@ -722,3 +722,24 @@ function downloadResults() {
                             <img src="${url}" alt="AI 스쿼트 분석 결과">
                             <p>결과를 공유해보세요! @1cc_my_sweat</p>
                         </body>
+                    </html>
+                `);
+            }
+            
+            // 피드백 메시지
+            showSuccessMessage('결과 이미지가 새 창에서 열렸습니다. 이미지를 길게 눌러 저장하세요!');
+        });
+    } else {
+        // 데스크톱: 기존 다운로드 방식
+        resultCanvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `squat-analysis-${Date.now()}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showSuccessMessage('결과가 다운로드되었습니다!');
+        });
+    }
+}

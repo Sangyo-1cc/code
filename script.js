@@ -751,4 +751,84 @@ async function downloadResults() {
 
         // 'seeked' 이벤트를 기다려 정확한 프레임 캡처
         await new Promise((resolve, reject) => {
-            const seekTimeout = setTimeout(() => reject(new Error('
+            const seekTimeout = setTimeout(() => reject(new Error('비디오 프레임 탐색 시간 초과')), 3000);
+            video.addEventListener('seeked', () => {
+                clearTimeout(seekTimeout);
+                // 캔버스에 비디오 프레임 그리기
+                const videoAspectRatio = video.videoWidth / video.videoHeight;
+                const outputWidth = storyWidth;
+                const outputHeight = outputWidth / videoAspectRatio;
+                const yPos = (storyHeight - outputHeight) / 2.5; // 이미지 위치를 살짝 위로 조정
+
+                storyCtx.drawImage(video, 0, yPos, outputWidth, outputHeight);
+                resolve();
+            }, { once: true });
+        });
+
+        // 4. 디자인 요소 추가 (그라데이션, 텍스트 등)
+        // 어두운 그라데이션 오버레이로 텍스트 가독성 확보
+        const gradient = storyCtx.createLinearGradient(0, 0, 0, storyHeight);
+        gradient.addColorStop(0, 'rgba(0,0,0,0.6)');
+        gradient.addColorStop(0.5, 'rgba(0,0,0,0.2)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
+        storyCtx.fillStyle = gradient;
+        storyCtx.fillRect(0, 0, storyWidth, storyHeight);
+
+        // 텍스트 스타일 설정
+        storyCtx.textAlign = 'center';
+        storyCtx.fillStyle = 'white';
+        storyCtx.shadowColor = 'rgba(0,0,0,0.7)';
+        storyCtx.shadowBlur = 10;
+
+        // (1) 상단 타이틀
+        storyCtx.font = 'bold 120px "Noto Sans KR", sans-serif';
+        storyCtx.fillText('✨ 최고의 순간 ✨', storyWidth / 2, 300);
+
+        // (2) 인스타그램 주소 (요청사항 반영)
+        storyCtx.font = '50px "Noto Sans KR", sans-serif';
+        storyCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        storyCtx.fillText('@1cc_my_sweat', storyWidth / 2, 400);
+
+        // (3) 종합 점수
+        const score = document.getElementById('scoreDisplay').textContent;
+        storyCtx.font = 'bold 300px "Noto Sans KR", sans-serif';
+        storyCtx.fillStyle = '#FFC107'; // 강조색
+        storyCtx.textBaseline = 'middle';
+        storyCtx.fillText(score, storyWidth / 2, storyHeight / 2 + 300);
+
+        // (4) "/100" 텍스트
+        storyCtx.font = '80px "Noto Sans KR", sans-serif';
+        storyCtx.fillStyle = 'white';
+        storyCtx.textBaseline = 'alphabetic'; // 기준선 조정
+        storyCtx.fillText('/100', storyWidth / 2 + 250, storyHeight / 2 + 340);
+        
+        // (5) 하단 메시지
+        storyCtx.font = '55px "Noto Sans KR", sans-serif';
+        storyCtx.fillText('AI 스쿼트 분석 완료!', storyWidth / 2, storyHeight - 200);
+
+        // 5. 최종 이미지 다운로드
+        const dataURL = storyCanvas.toDataURL('image/jpeg', 0.9);
+        const a = document.createElement('a');
+        a.href = dataURL;
+        a.download = `squat_story_${Date.now()}.jpg`;
+        a.click();
+        
+        showSuccessMessage('결과 이미지를 다운로드했습니다!');
+
+    } catch (error) {
+        console.error('결과 이미지 생성 실패:', error);
+        showError('결과 이미지를 생성하는 중 오류가 발생했습니다.');
+    }
+}
+
+// 오류 메시지 표시 함수
+function showError(message) {
+    console.error('오류:', message);
+    alert(`오류가 발생했습니다: ${message}`);
+}
+
+// 성공 메시지 표시 함수
+function showSuccessMessage(message) {
+    console.log('성공:', message);
+    alert(message);
+}

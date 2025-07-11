@@ -356,9 +356,9 @@ async function processVideo() {
         return;
     }
     
-    // 프레임 스킵 (2프레임마다 1번 처리로 변경 - 성능 개선)
+    // 프레임 스킵 (3프레임마다 1번 처리로 변경 - 더 많은 프레임 분석)
     frameSkip++;
-    if (frameSkip % 2 !== 0) {
+    if (frameSkip % 3 !== 0) {
         requestAnimationFrame(processVideo);
         return;
     }
@@ -389,10 +389,10 @@ async function processVideo() {
     currentFrame++;
     elements.frameInfo.textContent = `프레임 ${currentFrame} 처리 중... (${Math.round(progress)}%)`;
     
-    // 스쿼트 감지 실패 체크 (임계값 조정)
-    // 프레임 스킵을 고려하여 실제 시간 기반으로 체크
+    // 스쿼트 감지 실패 체크 (임계값 완화)
     const elapsedTime = elements.uploadedVideo.currentTime;
-    if (noSquatFrames > 150 && elapsedTime > 5) { // 5초 이상 경과 후 체크
+    if (noSquatFrames > 300 && elapsedTime > 10 && squatData.length < 5) { 
+        // 10초 이상 경과하고 감지된 데이터가 5개 미만인 경우만
         showError('스쿼트 동작을 감지할 수 없습니다. 측면에서 촬영한 스쿼트 영상을 사용해주세요.');
         completeAnalysis();
         return;
@@ -408,6 +408,9 @@ function onPoseResults(results) {
     
     if (!results.poseLandmarks) {
         noSquatFrames++;
+        if (debugMode) {
+            console.log('포즈 감지 실패 - 랜드마크 없음');
+        }
         return;
     }
     
@@ -422,6 +425,16 @@ function onPoseResults(results) {
         // 성공적인 감지 시 상태 업데이트
         if (squatData.length % 10 === 0) { // 10프레임마다 상태 업데이트
             elements.analysisStatus.textContent = `${squatData.length}개의 프레임 분석 완료...`;
+            console.log(`분석 진행 중: ${squatData.length}개 프레임 수집`);
+        }
+        
+        // 디버그 모드에서 각도 정보 출력
+        if (debugMode) {
+            console.log('스쿼트 감지:', {
+                kneeAngle: squatMetrics.kneeAngle.toFixed(1),
+                backAngle: squatMetrics.backAngle.toFixed(1),
+                depth: squatMetrics.depth
+            });
         }
     } else {
         noSquatFrames++;
@@ -435,16 +448,37 @@ function onPoseResults(results) {
 
 // 스쿼트 프레임 분석
 function analyzeSquatFrame(landmarks) {
-    // 주요 관절 좌표
-    const hip = landmarks[23];
-    const knee = landmarks[25];
-    const ankle = landmarks[27];
-    const shoulder = landmarks[11];
+    // 주요 관절 좌표 (왼쪽과 오른쪽 모두 체크)
+    const leftHip = landmarks[23];
+    const leftKnee = landmarks[25];
+    const leftAnkle = landmarks[27];
+    const rightHip = landmarks[24];
+    const rightKnee = landmarks[26];
+    const rightAnkle = landmarks[28];
+    const leftShoulder = landmarks[11];
+    const rightShoulder = landmarks[12];
     
-    // 좌표 유효성 검사
-    if (!hip || !knee || !ankle || !shoulder ||
-        hip.visibility < 0.5 || knee.visibility < 0.5 || 
-        ankle.visibility < 0.5 || shoulder.visibility < 0.5) {
+    // 왼쪽과 오른쪽 중 더 잘 보이는 쪽을 선택
+    let hip, knee, ankle, shoulder;
+    
+    if (leftHip && leftKnee && leftAnkle && leftShoulder &&
+        leftHip.visibility > 0.3 && leftKnee.visibility > 0.3 && 
+        leftAnkle.visibility > 0.3 && leftShoulder.visibility > 0.3) {
+        // 왼쪽이 더 잘 보이는 경우
+        hip = leftHip;
+        knee = leftKnee;
+        ankle = leftAnkle;
+        shoulder = leftShoulder;
+    } else if (rightHip && rightKnee && rightAnkle && rightShoulder &&
+               rightHip.visibility > 0.3 && rightKnee.visibility > 0.3 && 
+               rightAnkle.visibility > 0.3 && rightShoulder.visibility > 0.3) {
+        // 오른쪽이 더 잘 보이는 경우
+        hip = rightHip;
+        knee = rightKnee;
+        ankle = rightAnkle;
+        shoulder = rightShoulder;
+    } else {
+        // 양쪽 모두 가시성이 낮은 경우
         return null;
     }
     
@@ -454,8 +488,8 @@ function analyzeSquatFrame(landmarks) {
     // 허리 각도 계산
     const backAngle = calculateAngle(shoulder, hip, knee);
     
-    // 깊이 계산
-    const depth = kneeAngle < 90 ? 'deep' : kneeAngle < 120 ? 'parallel' : 'shallow';
+    // 깊이 계산 (임계값 조정)
+    const depth = kneeAngle < 100 ? 'deep' : kneeAngle < 130 ? 'parallel' : 'shallow';
     
     return {
         timestamp: elements.uploadedVideo.currentTime,
@@ -550,9 +584,9 @@ function countSquats() {
     let isDown = false;
     
     for (let i = 0; i < squatData.length; i++) {
-        if (squatData[i].kneeAngle < 120 && !isDown) {
+        if (squatData[i].kneeAngle < 130 && !isDown) {  // 임계값 완화
             isDown = true;
-        } else if (squatData[i].kneeAngle > 150 && isDown) {
+        } else if (squatData[i].kneeAngle > 160 && isDown) {  // 임계값 완화
             count++;
             isDown = false;
         }

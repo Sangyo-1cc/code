@@ -33,6 +33,29 @@ const elements = {
 
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
+    // MediaPipe 로딩 대기
+    if (typeof Pose === 'undefined') {
+        console.log('MediaPipe Pose 로딩 대기 중...');
+        // MediaPipe가 로드될 때까지 대기
+        let checkCount = 0;
+        const checkInterval = setInterval(() => {
+            checkCount++;
+            if (typeof Pose !== 'undefined') {
+                clearInterval(checkInterval);
+                console.log('MediaPipe Pose 로드 완료');
+                initializeApp();
+            } else if (checkCount > 20) { // 10초 대기
+                clearInterval(checkInterval);
+                showError('MediaPipe 라이브러리를 로드할 수 없습니다. 페이지를 새로고침해주세요.');
+            }
+        }, 500);
+    } else {
+        initializeApp();
+    }
+});
+
+// 앱 초기화 함수
+function initializeApp() {
     initializeElements();
     setupEventListeners();
     setupPose();
@@ -41,9 +64,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('debug') === 'true') {
         debugMode = true;
-        elements.debugPanel.classList.add('show');
+        if (elements.debugPanel) {
+            elements.debugPanel.classList.add('show');
+        }
     }
-});
+}
 
 // DOM 요소 초기화
 function initializeElements() {
@@ -100,22 +125,39 @@ function setupEventListeners() {
 
 // MediaPipe Pose 설정
 function setupPose() {
-    pose = new Pose({
-        locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+    try {
+        // MediaPipe Pose 초기화 전에 window.Pose 확인
+        if (typeof Pose === 'undefined') {
+            console.error('MediaPipe Pose가 로드되지 않았습니다.');
+            showError('포즈 감지 라이브러리를 로드할 수 없습니다. 페이지를 새로고침해주세요.');
+            return;
         }
-    });
-    
-    pose.setOptions({
-        modelComplexity: 0, // 0으로 변경하여 성능 향상
-        smoothLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-        enableSegmentation: false, // 불필요한 기능 비활성화
-        smoothSegmentation: false
-    });
-    
-    pose.onResults(onPoseResults);
+        
+        pose = new Pose({
+            locateFile: (file) => {
+                // MediaPipe CDN URL 수정 (최신 버전으로)
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`;
+            }
+        });
+        
+        pose.setOptions({
+            modelComplexity: 1, // 0이 아닌 1로 변경 (더 안정적)
+            smoothLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+            enableSegmentation: false,
+            smoothSegmentation: false
+        });
+        
+        pose.onResults(onPoseResults);
+        
+        // 초기화 성공 로그
+        console.log('MediaPipe Pose 초기화 성공');
+        
+    } catch (error) {
+        console.error('MediaPipe Pose 초기화 실패:', error);
+        showError('포즈 감지 초기화에 실패했습니다. 페이지를 새로고침해주세요.');
+    }
 }
 
 // 앱 초기화
@@ -326,9 +368,17 @@ async function processVideo() {
     
     // MediaPipe로 포즈 감지 (비동기 처리 개선)
     try {
-        pose.send({ image: canvas });
+        if (pose && typeof pose.send === 'function') {
+            await pose.send({ image: canvas });
+        } else {
+            console.error('MediaPipe Pose가 초기화되지 않았습니다.');
+            showError('포즈 감지 초기화 오류가 발생했습니다.');
+            completeAnalysis();
+            return;
+        }
     } catch (error) {
         console.error('포즈 감지 오류:', error);
+        // 오류가 발생해도 계속 진행
     }
     
     // 진행률 업데이트

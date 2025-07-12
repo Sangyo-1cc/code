@@ -256,6 +256,11 @@ function loadVideo(file) {
     const url = URL.createObjectURL(file);
     elements.uploadedVideo.src = url;
     
+    // 비디오 자동 재생 방지
+    elements.uploadedVideo.autoplay = false;
+    elements.uploadedVideo.loop = false;
+    elements.uploadedVideo.muted = true; // 일부 브라우저의 자동재생 정책 대응
+    
     elements.uploadedVideo.onloadedmetadata = () => {
         // 비디오 길이 체크 (최대 30초)
         if (elements.uploadedVideo.duration > 30) {
@@ -287,6 +292,10 @@ function loadVideo(file) {
         // 비디오 프리뷰 크기도 조정
         elements.uploadedVideo.style.maxWidth = '100%';
         elements.uploadedVideo.style.height = 'auto';
+        
+        // 비디오를 일시정지 상태로 유지
+        elements.uploadedVideo.pause();
+        elements.uploadedVideo.currentTime = 0;
         
         updateStep(1);
     };
@@ -364,11 +373,27 @@ async function startAnalysis() {
 
 // 비디오 프레임 처리
 async function processVideo() {
-    if (!isAnalyzing || elements.uploadedVideo.ended || elements.uploadedVideo.paused) {
-        if (elements.uploadedVideo.ended) {
-            completeAnalysis();
-        }
+    if (!isAnalyzing) {
         return;
+    }
+    
+    // 비디오가 끝났는지 확인
+    if (elements.uploadedVideo.ended || elements.uploadedVideo.currentTime >= elements.uploadedVideo.duration) {
+        console.log('비디오 분석 완료');
+        completeAnalysis();
+        return;
+    }
+    
+    // 비디오가 일시정지된 경우 처리 중단
+    if (elements.uploadedVideo.paused && isAnalyzing) {
+        console.log('비디오가 일시정지됨 - 재생 재개 시도');
+        try {
+            await elements.uploadedVideo.play();
+        } catch (error) {
+            console.error('비디오 재생 재개 실패:', error);
+            completeAnalysis();
+            return;
+        }
     }
     
     // 프레임 레이트 제한 (사파리 대응)
@@ -410,7 +435,7 @@ async function processVideo() {
     }
     
     // 진행률 업데이트
-    const progress = (elements.uploadedVideo.currentTime / elements.uploadedVideo.duration) * 100;
+    const progress = Math.min((elements.uploadedVideo.currentTime / elements.uploadedVideo.duration) * 100, 100);
     elements.progressFill.style.width = `${progress}%`;
     
     // 프레임 정보 업데이트
@@ -418,7 +443,9 @@ async function processVideo() {
     elements.frameInfo.textContent = `프레임 ${currentFrame} 처리 중... (${Math.round(progress)}%)`;
     
     // 다음 프레임 처리
-    requestAnimationFrame(processVideo);
+    if (isAnalyzing) {
+        requestAnimationFrame(processVideo);
+    }
 }
 
 // 포즈 감지 결과 처리
@@ -545,14 +572,25 @@ function calculateAngle(a, b, c) {
 
 // 분석 완료
 function completeAnalysis() {
+    console.log('분석 완료 함수 호출');
+    
+    // 분석 상태 변경
     isAnalyzing = false;
-    elements.uploadedVideo.pause();
+    
+    // 비디오 정지 및 초기화
+    if (elements.uploadedVideo) {
+        elements.uploadedVideo.pause();
+        elements.uploadedVideo.currentTime = 0;
+    }
     
     // 타임아웃 클리어
     if (analysisTimeout) {
         clearTimeout(analysisTimeout);
         analysisTimeout = null;
     }
+    
+    // 프레임 타이밍 초기화
+    window.lastFrameTime = null;
     
     // 데이터 충분성 체크 (최소 요구사항을 5개로 낮춤)
     if (squatData.length < 5) {

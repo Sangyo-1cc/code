@@ -140,8 +140,11 @@ function setupPose() {
             }
         });
         
+        // 사파리 브라우저 체크
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        
         pose.setOptions({
-            modelComplexity: 1, // 0이 아닌 1로 변경 (더 안정적)
+            modelComplexity: isSafari ? 0 : 1, // 사파리에서는 가장 가벼운 모델 사용
             smoothLandmarks: true,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5,
@@ -152,7 +155,7 @@ function setupPose() {
         pose.onResults(onPoseResults);
         
         // 초기화 성공 로그
-        console.log('MediaPipe Pose 초기화 성공');
+        console.log('MediaPipe Pose 초기화 성공 (브라우저:', isSafari ? '사파리' : '기타', ')');
         
     } catch (error) {
         console.error('MediaPipe Pose 초기화 실패:', error);
@@ -299,6 +302,7 @@ async function startAnalysis() {
     frameSkip = 0;
     analysisTimeout = null;
     noSquatFrames = 0;
+    window.lastFrameTime = null; // 프레임 타이밍 초기화
     
     // UI 전환
     elements.uploadSection.style.display = 'none';
@@ -316,9 +320,19 @@ async function startAnalysis() {
         elements.analyzingSection.appendChild(promoBanner);
     }
     
-    // 비디오 재생 및 분석
+    // 비디오 설정
     elements.uploadedVideo.currentTime = 0;
-    elements.uploadedVideo.playbackRate = 1.0;
+    
+    // 사파리 브라우저 체크
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    
+    // 사파리에서는 playbackRate를 조정하여 성능 개선
+    if (isSafari) {
+        elements.uploadedVideo.playbackRate = 0.5; // 속도를 절반으로
+        console.log('사파리 브라우저 감지 - 재생 속도 조정');
+    } else {
+        elements.uploadedVideo.playbackRate = 1.0;
+    }
     
     // 비디오 재생 시작
     try {
@@ -330,10 +344,10 @@ async function startAnalysis() {
     }
     
     // 분석 타임아웃 설정 (영상 길이에 따라 동적으로 설정)
-    const timeoutDuration = Math.max(60000, elements.uploadedVideo.duration * 3000); // 최소 60초, 영상 길이의 3배
+    const timeoutDuration = Math.max(60000, elements.uploadedVideo.duration * 4000); // 사파리를 위해 시간 증가
     analysisTimeout = setTimeout(() => {
         if (isAnalyzing) {
-            showError('분석 시간이 초과되었습니다. 더 짧은 영상을 사용해주세요.');
+            console.log('분석 시간 초과 - 강제 완료');
             completeAnalysis();
         }
     }, timeoutDuration);
@@ -341,7 +355,8 @@ async function startAnalysis() {
     // 디버그 로그
     console.log('분석 시작:', {
         duration: elements.uploadedVideo.duration,
-        timeout: timeoutDuration / 1000 + '초'
+        timeout: timeoutDuration / 1000 + '초',
+        browser: isSafari ? '사파리' : '기타'
     });
     
     processVideo();
@@ -349,22 +364,41 @@ async function startAnalysis() {
 
 // 비디오 프레임 처리
 async function processVideo() {
-    if (!isAnalyzing || elements.uploadedVideo.ended) {
+    if (!isAnalyzing || elements.uploadedVideo.ended || elements.uploadedVideo.paused) {
         if (elements.uploadedVideo.ended) {
             completeAnalysis();
         }
         return;
     }
     
-    // 모든 프레임을 처리 (프레임 스킵 제거)
+    // 프레임 레이트 제한 (사파리 대응)
+    const now = Date.now();
+    if (!window.lastFrameTime) {
+        window.lastFrameTime = now;
+    }
+    
+    // 30fps로 제한 (33ms마다 처리)
+    const deltaTime = now - window.lastFrameTime;
+    if (deltaTime < 33) {
+        requestAnimationFrame(processVideo);
+        return;
+    }
+    window.lastFrameTime = now;
     
     // 캔버스에 현재 프레임 그리기
-    ctx.drawImage(elements.uploadedVideo, 0, 0, canvas.width, canvas.height);
+    try {
+        ctx.drawImage(elements.uploadedVideo, 0, 0, canvas.width, canvas.height);
+    } catch (error) {
+        console.error('캔버스 그리기 오류:', error);
+        requestAnimationFrame(processVideo);
+        return;
+    }
     
-    // MediaPipe로 포즈 감지 (비동기 처리 개선)
+    // MediaPipe로 포즈 감지
     try {
         if (pose && typeof pose.send === 'function') {
-            await pose.send({ image: canvas });
+            // 사파리에서는 동기적으로 처리
+            pose.send({ image: canvas });
         } else {
             console.error('MediaPipe Pose가 초기화되지 않았습니다.');
             showError('포즈 감지 초기화 오류가 발생했습니다.');
@@ -373,7 +407,6 @@ async function processVideo() {
         }
     } catch (error) {
         console.error('포즈 감지 오류:', error);
-        // 오류가 발생해도 계속 진행
     }
     
     // 진행률 업데이트
@@ -383,8 +416,6 @@ async function processVideo() {
     // 프레임 정보 업데이트
     currentFrame++;
     elements.frameInfo.textContent = `프레임 ${currentFrame} 처리 중... (${Math.round(progress)}%)`;
-    
-    // 스쿼트 감지 실패 체크 제거 - 끝까지 분석 진행
     
     // 다음 프레임 처리
     requestAnimationFrame(processVideo);

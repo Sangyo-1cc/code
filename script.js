@@ -869,102 +869,145 @@ async function downloadResults() {
             video.addEventListener('seeked', () => {
                 clearTimeout(seekTimeout);
                 
+                // 배경색 설정
                 storyCtx.fillStyle = '#1a2238';
                 storyCtx.fillRect(0, 0, storyWidth, storyHeight);
                 
+                // 비디오 프레임을 전체 화면으로 그리기 (중앙 기준)
                 const videoAspectRatio = video.videoWidth / video.videoHeight;
-                const outputWidth = storyWidth * 0.9;
-                const outputHeight = outputWidth / videoAspectRatio;
-                const xPos = (storyWidth - outputWidth) / 2;
-                const yPos = 600;
+                const storyAspectRatio = storyWidth / storyHeight;
+                
+                let outputWidth, outputHeight, xPos, yPos;
+                
+                if (videoAspectRatio > storyAspectRatio) {
+                    // 비디오가 더 넓은 경우
+                    outputWidth = storyWidth;
+                    outputHeight = outputWidth / videoAspectRatio;
+                    xPos = 0;
+                    yPos = (storyHeight - outputHeight) / 2;
+                } else {
+                    // 비디오가 더 높은 경우
+                    outputHeight = storyHeight;
+                    outputWidth = outputHeight * videoAspectRatio;
+                    xPos = (storyWidth - outputWidth) / 2;
+                    yPos = 0;
+                }
 
-                storyCtx.save();
-                storyCtx.beginPath();
-                storyCtx.roundRect(xPos, yPos, outputWidth, outputHeight, 20);
-                storyCtx.clip();
                 storyCtx.drawImage(video, xPos, yPos, outputWidth, outputHeight);
-                storyCtx.restore();
 
                 resolve();
             }, { once: true });
         });
 
+        // 상단 타이틀
         storyCtx.textAlign = 'center';
         storyCtx.fillStyle = 'white';
-
         storyCtx.font = 'bold 80px "Noto Sans KR", sans-serif';
         storyCtx.fillText('AI SQUAT COACH', storyWidth / 2, 120);
 
-        const scoreBoxY = 250;
-        const scoreBoxHeight = 280;
+        // 인스타그램 아이디 (타이틀 바로 아래)
+        storyCtx.font = '35px "Noto Sans KR", sans-serif';
+        storyCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        storyCtx.fillText('@1cc_my_sweat', storyWidth / 2, 180);
+
+        // 점수 박스 (좌측 상단, 인스타그램 UI 여백 고려)
+        const scoreBoxX = 120; // 인스타 여백 고려
+        const scoreBoxY = 280; // 인스타 상단 UI 피해서 배치
+        const scoreBoxWidth = 280;
+        const scoreBoxHeight = 200;
         
-        storyCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        // 점수 박스 배경 (반투명 검정)
+        storyCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         storyCtx.beginPath();
-        storyCtx.roundRect(100, scoreBoxY, 400, scoreBoxHeight, 20);
+        storyCtx.roundRect(scoreBoxX, scoreBoxY, scoreBoxWidth, scoreBoxHeight, 20);
         storyCtx.fill();
 
+        // 점수
         const score = document.getElementById('scoreDisplay').textContent;
         storyCtx.fillStyle = 'white';
-        storyCtx.font = 'bold 150px "Noto Sans KR", sans-serif';
-        storyCtx.fillText(score, 300, scoreBoxY + 140);
+        storyCtx.font = 'bold 100px "Noto Sans KR", sans-serif';
+        storyCtx.textAlign = 'center';
+        storyCtx.fillText(score, scoreBoxX + scoreBoxWidth/2, scoreBoxY + 80);
         
-        storyCtx.font = '40px "Noto Sans KR", sans-serif';
-        storyCtx.fillText('SCORE', 300, scoreBoxY + 190);
+        storyCtx.font = '30px "Noto Sans KR", sans-serif';
+        storyCtx.fillText('SCORE', scoreBoxX + scoreBoxWidth/2, scoreBoxY + 120);
 
+        // 세부 정보
         const results = calculateResults();
-        storyCtx.font = '35px "Noto Sans KR", sans-serif';
+        storyCtx.font = '25px "Noto Sans KR", sans-serif';
         storyCtx.textAlign = 'left';
         storyCtx.fillStyle = 'white';
         
-        storyCtx.fillText(`🎯 ${results.squatCount}회 완료`, 120, scoreBoxY + 240);
-        storyCtx.fillText(`📐 무릎각도 ${Math.round(bestFrame.kneeAngle)}°`, 120, scoreBoxY + 280);
-        storyCtx.fillText(`💪 깊이점수 ${results.depthScore}점`, 120, scoreBoxY + 320);
+        storyCtx.fillText(`🎯 ${results.squatCount}회 완료`, scoreBoxX + 20, scoreBoxY + 160);
+        storyCtx.fillText(`📐 무릎각도 ${Math.round(bestFrame.kneeAngle)}°`, scoreBoxX + 20, scoreBoxY + 190);
+        storyCtx.fillText(`💪 깊이점수 ${results.depthScore}점`, scoreBoxX + 20, scoreBoxY + 220);
 
-        const feedbackBoxY = 1250;
-        storyCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        // 하단 피드백 박스
+        const feedbackBoxY = 1400;
+        storyCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         storyCtx.beginPath();
-        storyCtx.roundRect(100, feedbackBoxY, storyWidth - 200, 350, 20);
+        storyCtx.roundRect(100, feedbackBoxY, storyWidth - 200, 280, 20);
         storyCtx.fill();
 
+        // 피드백 메시지
         storyCtx.textAlign = 'center';
-        storyCtx.font = 'bold 50px "Noto Sans KR", sans-serif';
+        storyCtx.font = 'bold 45px "Noto Sans KR", sans-serif';
         storyCtx.fillStyle = '#FFD700';
-        storyCtx.fillText('정말 잘하고 있어요! ✨', storyWidth / 2, feedbackBoxY + 80);
+        storyCtx.fillText('정말 잘하고 있어요! ✨', storyWidth / 2, feedbackBoxY + 70);
 
-        storyCtx.font = '35px "Noto Sans KR", sans-serif';
+        storyCtx.font = '32px "Noto Sans KR", sans-serif';
         storyCtx.fillStyle = 'white';
-        const feedbackText = '이미 훌륭한 스쿼트 실력을\n가지고 있네요! 꾸준히\n연습하면 더욱 완벽해질\n거예요.';
+        const feedbackText = '이미 훌륭한 스쿼트 실력을\n가지고 있네요! 꾸준히\n연습하면 더욱 완벽해질 거예요.';
         const lines = feedbackText.split('\n');
         lines.forEach((line, index) => {
-            storyCtx.fillText(line, storyWidth / 2, feedbackBoxY + 140 + (index * 50));
+            storyCtx.fillText(line, storyWidth / 2, feedbackBoxY + 120 + (index * 45));
         });
 
-        storyCtx.font = '35px "Noto Sans KR", sans-serif';
-        storyCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        const today = new Date();
-        const dateStr = `${today.getFullYear()}. ${today.getMonth() + 1}. ${today.getDate()}.`;
-        storyCtx.fillText(dateStr, storyWidth / 2, storyHeight - 180);
-
+        // 날짜
         storyCtx.font = '30px "Noto Sans KR", sans-serif';
         storyCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        storyCtx.fillText('🔒 영상은 저장되지 않습니다', storyWidth / 2, storyHeight - 120);
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}. ${today.getMonth() + 1}. ${today.getDate()}.`;
+        storyCtx.fillText(dateStr, storyWidth / 2, storyHeight - 120);
 
+        // 영상 미저장 안내
         storyCtx.font = '25px "Noto Sans KR", sans-serif';
         storyCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        storyCtx.fillText('#AISquatCoach', storyWidth / 2, storyHeight - 80);
+        storyCtx.fillText('🔒 영상은 저장되지 않습니다', storyWidth / 2, storyHeight - 80);
 
-        storyCtx.font = '25px "Noto Sans KR", sans-serif';
-        storyCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        storyCtx.textAlign = 'right';
-        storyCtx.fillText('@1cc_my_sweat', storyWidth - 50, 50);
+        // 해시태그
+        storyCtx.font = '22px "Noto Sans KR", sans-serif';
+        storyCtx.fillText('#AISquatCoach', storyWidth / 2, storyHeight - 50);
 
-        const dataURL = storyCanvas.toDataURL('image/jpeg', 0.95);
-        const a = document.createElement('a');
-        a.href = dataURL;
-        a.download = `squat_analysis_${Date.now()}.jpg`;
-        a.click();
-        
-        showSuccessMessage('결과 이미지를 다운로드했습니다!');
+        // 이미지를 blob으로 변환
+        storyCanvas.toBlob(async (blob) => {
+            try {
+                // Web Share API 지원 확인 (모바일)
+                if (navigator.share && navigator.canShare && navigator.canShare({files: [new File([blob], 'squat_result.jpg', {type: 'image/jpeg'})]})) {
+                    const file = new File([blob], 'squat_result.jpg', {type: 'image/jpeg'});
+                    await navigator.share({
+                        files: [file],
+                        title: 'AI SQUAT COACH 결과',
+                        text: '나의 스쿼트 점수를 확인해보세요!'
+                    });
+                } else {
+                    // Share API를 지원하지 않는 경우 기존 다운로드 방식 사용
+                    const dataURL = storyCanvas.toDataURL('image/jpeg', 0.95);
+                    const a = document.createElement('a');
+                    a.href = dataURL;
+                    a.download = `squat_analysis_${Date.now()}.jpg`;
+                    a.click();
+                }
+            } catch (error) {
+                // 공유 실패 시 다운로드로 폴백
+                console.log('공유 실패, 다운로드로 전환:', error);
+                const dataURL = storyCanvas.toDataURL('image/jpeg', 0.95);
+                const a = document.createElement('a');
+                a.href = dataURL;
+                a.download = `squat_analysis_${Date.now()}.jpg`;
+                a.click();
+            }
+        }, 'image/jpeg', 0.95);
 
     } catch (error) {
         console.error('결과 이미지 생성 실패:', error);

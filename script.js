@@ -459,7 +459,7 @@ function analyzeSquatFrame(landmarks) {
     const rightShoulder = landmarks[12];
     
     // 더 낮은 가시성 요구사항
-    const minVisibility = 0.1;
+    const minVisibility = 0.25;
     
     // 양쪽 다리의 평균값 사용
     let kneeAngleLeft = null;
@@ -509,7 +509,10 @@ function analyzeSquatFrame(landmarks) {
         // 측정 실패
         return null;
     }
-    
+       // 스쿼트 동작 유효성 검사 추가
+    if (!isValidSquatMovement(kneeAngle, backAngle, hipY, kneeY)) {
+        return null;
+    } 
     // 깊이 계산 (임계값 조정)
     const depth = kneeAngle < 110 ? 'deep' : kneeAngle < 140 ? 'parallel' : 'shallow';
     
@@ -609,6 +612,27 @@ function calculateResults() {
     };
 }
 
+// 스쿼트 동작 유효성 검사 함수 (새로 추가)
+function isValidSquatMovement(kneeAngle, backAngle, hipY, kneeY) {
+    // 1. 무릎 각도가 스쿼트 범위에 있는지 확인
+    if (kneeAngle > 175 || kneeAngle < 60) {
+        return false;
+    }
+    
+    // 2. 허리 각도가 적절한지 확인
+    if (backAngle < 45 || backAngle > 150) {
+        return false;
+    }
+    
+    // 3. 엉덩이와 무릎의 상대적 위치 확인 (스쿼트 특성)
+    const hipKneeRatio = Math.abs(hipY - kneeY);
+    if (hipKneeRatio < 0.02) { // 너무 차이가 적으면 스쿼트가 아님
+        return false;
+    }
+    
+    return true;
+}
+
 // 스쿼트 횟수 계산 (개선됨)
 function countSquats() {
     if (squatData.length < 10) return 1;
@@ -618,9 +642,9 @@ function countSquats() {
     
     // 무릎 각도 기반 카운트
     for (let i = 0; i < squatData.length; i++) {
-        if (squatData[i].kneeAngle < 130 && !isDown) {
+        if (squatData[i].kneeAngle < 125 && !isDown) {
             isDown = true;
-        } else if (squatData[i].kneeAngle > 150 && isDown) {
+        } else if (squatData[i].kneeAngle > 155 && isDown) {
             count++;
             isDown = false;
         }
